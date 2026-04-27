@@ -87,6 +87,10 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
 
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-thumb{background:var(--n1);border-radius:3px}
+
+@media(max-width:640px){
+  .pie-leg{display:none}
+}
 </style>
 </head>
 <body>
@@ -145,6 +149,9 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
 const Y = "#FFDE00";
 const N = ["#464a72","#4f547f","#585d8c","#616699","#6b709e","#7478a8","#7e82b1"];
 let charts = {};
+let lastData = null;
+
+function isMobile() { return window.innerWidth <= 640; }
 
 function cols(n) {
   return Array.from({length: n}, (_, i) => i === 0 ? Y : N[Math.min(i - 1, N.length - 1)]);
@@ -293,7 +300,7 @@ function render(d) {
       maintainAspectRatio: false,
       interaction: { mode: "index", intersect: false },
       plugins: {
-        legend: { position: "top", labels: { color: "#c2c5da", font: { family: "Montserrat", size: 11 }, boxWidth: 10, padding: 14 } }
+        legend: { display: !isMobile(), position: "top", labels: { color: "#c2c5da", font: { family: "Montserrat", size: 11 }, boxWidth: 10, padding: 14 } }
       },
       scales: {
         x: { ticks: { color: "#c2c5da", font: { family: "Montserrat", size: 10 } }, grid: { color: "rgba(255,255,255,.04)" }, border: { display: false } },
@@ -400,7 +407,8 @@ async function fetchExcel() {
       const res = await fetch(name);
       if (!res.ok) continue;
       const buf = await res.arrayBuffer();
-      render(parseExcel(buf));
+      lastData = parseExcel(buf);
+      render(lastData);
       return;
     } catch (e) {
       // continuar con el siguiente
@@ -408,6 +416,42 @@ async function fetchExcel() {
   }
   document.getElementById("pb").textContent = "Sin datos";
 }
+
+// Re-render combo legend when crossing mobile breakpoint
+let wasMobile = isMobile();
+window.addEventListener("resize", () => {
+  const nowMobile = isMobile();
+  if (nowMobile !== wasMobile && lastData) {
+    wasMobile = nowMobile;
+    // Solo recrea el combo para actualizar la leyenda
+    const d = lastData;
+    kill("combo");
+    const ml = d.tipologia.months;
+    const wm = ml.map((_, i) => d.tipologia.categories.reduce((s, c) => s + (c.monthly[i] || 0), 0));
+    const hm = ml.map((_, i) => d.negHoras.categories.reduce((s, c) => s + (c.monthly[i] || 0), 0));
+    const mxi = wm.indexOf(Math.max(...wm));
+    charts.combo = new Chart(document.getElementById("combo"), {
+      type: "bar",
+      data: {
+        labels: ml,
+        datasets: [
+          { type:"line", label:"Total horas", data:hm, borderColor:"#ffffff", backgroundColor:"rgba(255,255,255,.08)", pointBackgroundColor:"#ffffff", pointBorderColor:"#12152a", pointBorderWidth:2, pointRadius:5, tension:.35, fill:true, yAxisID:"y1", order:0 },
+          { type:"bar", label:"Total trabajos", data:wm, backgroundColor:wm.map((_,i)=>i===mxi?Y:"#464a72"), borderRadius:4, yAxisID:"y", order:1 }
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        interaction:{mode:"index",intersect:false},
+        plugins:{ legend:{ display:!nowMobile, position:"top", labels:{color:"#c2c5da",font:{family:"Montserrat",size:11},boxWidth:10,padding:14} } },
+        scales:{
+          x:{ticks:{color:"#c2c5da",font:{family:"Montserrat",size:10}},grid:{color:"rgba(255,255,255,.04)"},border:{display:false}},
+          y:{position:"left",ticks:{color:"#c2c5da",font:{family:"Montserrat",size:10}},grid:{color:"rgba(255,255,255,.04)"},border:{display:false}},
+          y1:{position:"right",ticks:{color:"rgba(255,255,255,.5)",font:{family:"Montserrat",size:10}},grid:{display:false},border:{display:false}}
+        }
+      }
+    });
+  }
+});
 
 fetchExcel();
 </script>
