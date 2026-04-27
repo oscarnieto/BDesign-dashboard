@@ -63,8 +63,8 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
 .cw canvas{display:block!important;width:100%!important;height:100%!important}
 
 /* Pie layout */
-.pie-layout{display:flex;align-items:center;gap:16px;min-height:280px}
-.pie-wrap{flex:0 0 clamp(200px,55%,340px);height:clamp(200px,55%,340px)}
+.pie-layout{display:flex;align-items:center;gap:16px;min-height:320px}
+.pie-wrap{flex:0 0 clamp(240px,62%,420px);height:clamp(240px,62%,420px)}
 .pie-wrap canvas{display:block!important;width:100%!important;height:100%!important}
 .pie-leg{flex:1;display:flex;flex-direction:column;gap:5px;min-width:0}
 .pie-li{display:flex;align-items:center;gap:7px;font-size:clamp(9px,.9vw,11px);color:var(--gray2)}
@@ -136,6 +136,18 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
     </div>
   </div>
 
+  <div class="sec">Análisis de calidad y esfuerzo</div>
+  <div class="g2">
+    <div class="cc">
+      <div class="ct">Horas por trabajo — Complejidad por negocio</div>
+      <div class="cw" style="min-height:260px"><canvas id="ratioChart"></canvas></div>
+    </div>
+    <div class="cc">
+      <div class="ct">Distribución del esfuerzo — Radar por negocio</div>
+      <div class="cw" style="min-height:260px"><canvas id="radarChart"></canvas></div>
+    </div>
+  </div>
+
   <div class="sec">Redes sociales</div>
   <div class="rg">
     <div class="rk"><div class="kl">RRSS: Publicaciones YTD</div><div class="kv" id="rv">—</div><div class="mbars" id="rvb"></div></div>
@@ -177,6 +189,7 @@ function vBar(canvasId, data, suf) {
   const s = sorted(data);
   const tot = s.reduce((a, c) => a + c.ytd, 0);
   const c = cols(s.length);
+  const mob = isMobile();
   charts[canvasId] = new Chart(document.getElementById(canvasId), {
     type: "bar",
     data: {
@@ -196,7 +209,7 @@ function vBar(canvasId, data, suf) {
         tooltip: { callbacks: { label: ctx => " " + ctx.parsed.y.toLocaleString("es-ES") + suf + " (" + Math.round(ctx.parsed.y / tot * 100) + "%)" } }
       },
       scales: {
-        x: { ticks: { color: "#c2c5da", font: { family: "Montserrat", size: 10 }, maxRotation: 35, minRotation: 25 }, grid: { display: false }, border: { display: false } },
+        x: { ticks: { display: !mob, color: "#c2c5da", font: { family: "Montserrat", size: 10 }, maxRotation: 35, minRotation: 25 }, grid: { display: false }, border: { display: false } },
         y: { ticks: { color: "#9499c0", font: { family: "Montserrat", size: 10 } }, grid: { color: "rgba(255,255,255,.05)" }, border: { display: false } }
       }
     }
@@ -326,6 +339,64 @@ function render(d) {
   }
   mb("rvb", d.rrss.volMon, d.rrss.months);
   mb("rhb", d.rrss.horMon, d.rrss.months);
+
+  // ── Ratio horas/trabajo por negocio ──
+  kill("ratioChart");
+  const negCommon = d.negVol.categories.filter(nv => {
+    return d.negHoras.categories.find(nh => nh.name === nv.name);
+  }).map(nv => {
+    const nh = d.negHoras.categories.find(nh => nh.name === nv.name);
+    return { name: nv.name, ratio: nv.ytd > 0 ? parseFloat((nh.ytd / nv.ytd).toFixed(1)) : 0 };
+  }).sort((a, b) => b.ratio - a.ratio);
+  const ratioColors = cols(negCommon.length);
+  charts.ratioChart = new Chart(document.getElementById("ratioChart"), {
+    type: "bar",
+    data: {
+      labels: negCommon.map(c => c.name),
+      datasets: [{ data: negCommon.map(c => c.ratio), backgroundColor: ratioColors, borderRadius: 4, borderSkipped: false }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => " " + ctx.parsed.y.toFixed(1) + " h/trabajo" } }
+      },
+      scales: {
+        x: { ticks: { display: !isMobile(), color: "#c2c5da", font: { family: "Montserrat", size: 10 }, maxRotation: 35, minRotation: 25 }, grid: { display: false }, border: { display: false } },
+        y: { ticks: { color: "#9499c0", font: { family: "Montserrat", size: 10 } }, grid: { color: "rgba(255,255,255,.05)" }, border: { display: false } }
+      }
+    }
+  });
+
+  // ── Radar — volumen vs horas por negocio (normalizado) ──
+  kill("radarChart");
+  const radarCats = d.negVol.categories.filter(nv => d.negHoras.categories.find(nh => nh.name === nv.name)).slice(0, 6);
+  const maxVol = Math.max(...radarCats.map(c => c.ytd));
+  charts.radarChart = new Chart(document.getElementById("radarChart"), {
+    type: "radar",
+    data: {
+      labels: radarCats.map(c => c.name),
+      datasets: [
+        {
+          label: "Volumen trabajos",
+          data: radarCats.map(c => maxVol > 0 ? Math.round(c.ytd / maxVol * 100) : 0),
+          borderColor: Y, backgroundColor: "rgba(255,222,0,.15)", pointBackgroundColor: Y, pointRadius: 4, borderWidth: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        r: {
+          ticks: { display: false },
+          grid: { color: "rgba(255,255,255,.08)" },
+          angleLines: { color: "rgba(255,255,255,.08)" },
+          pointLabels: { color: "#c2c5da", font: { family: "Montserrat", size: 10 } }
+        }
+      }
+    }
+  });
 }
 
 function parseExcel(buf) {
