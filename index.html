@@ -184,12 +184,24 @@ function period(months) {
   return months.length === 1 ? months[0] : months[0] + " – " + months[months.length - 1];
 }
 
+function mergeResidencial(cats) {
+  const residKey = cats.filter(c => /residencial/i.test(c.name));
+  const others   = cats.filter(c => !/residencial/i.test(c.name));
+  if (residKey.length === 0) return cats;
+  const merged = {
+    name: "Residencial total",
+    ytd: residKey.reduce((s, c) => s + c.ytd, 0),
+    monthly: residKey[0].monthly.map((_, i) => residKey.reduce((s, c) => s + (c.monthly[i] || 0), 0))
+  };
+  return [...others, merged];
+}
+
 function vBar(canvasId, data, suf) {
   kill(canvasId);
-  const s = sorted(data);
-  const tot = s.reduce((a, c) => a + c.ytd, 0);
-  const c = cols(s.length);
   const mob = isMobile();
+  const s = sorted(mob ? data.slice(0, 5) : data);
+  const tot = sorted(data).reduce((a, c) => a + c.ytd, 0); // always full total for %
+  const c = cols(s.length);
   charts[canvasId] = new Chart(document.getElementById(canvasId), {
     type: "bar",
     data: {
@@ -253,14 +265,15 @@ function render(d) {
     setTimeout(() => e.classList.add("in"), 80 + i * 70);
   });
 
-  // Barras verticales — filtrar "Brand Design" de negHoras
-  const negHorasFiltradas = {
-    ...d.negHoras,
-    categories: d.negHoras.categories.filter(c => c.name.trim().toLowerCase() !== "brand design")
-  };
-  vBar("tc", d.tipologia.categories, " trabajos");
-  vBar("nc", d.negVol.categories, " trabajos");
-  vBar("nhc", negHorasFiltradas.categories, " h");
+  // Barras verticales — filtrar "Brand Design" de negHoras, fusionar Residencial
+  const tipologiaMerged   = mergeResidencial(d.tipologia.categories);
+  const negVolMerged      = mergeResidencial(d.negVol.categories);
+  const negHorasMerged    = mergeResidencial(
+    d.negHoras.categories.filter(c => c.name.trim().toLowerCase() !== "brand design")
+  );
+  vBar("tc",  tipologiaMerged,  " trabajos");
+  vBar("nc",  negVolMerged,     " trabajos");
+  vBar("nhc", negHorasMerged,   " h");
 
   // Ciudad — tarta
   kill("cc2");
@@ -342,10 +355,10 @@ function render(d) {
 
   // ── Ratio horas/trabajo por negocio ──
   kill("ratioChart");
-  const negCommon = d.negVol.categories.filter(nv => {
-    return d.negHoras.categories.find(nh => nh.name === nv.name);
+  const negCommon = negVolMerged.filter(nv => {
+    return negHorasMerged.find(nh => nh.name === nv.name);
   }).map(nv => {
-    const nh = d.negHoras.categories.find(nh => nh.name === nv.name);
+    const nh = negHorasMerged.find(nh => nh.name === nv.name);
     return { name: nv.name, ratio: nv.ytd > 0 ? parseFloat((nh.ytd / nv.ytd).toFixed(1)) : 0 };
   }).sort((a, b) => b.ratio - a.ratio);
   const ratioColors = cols(negCommon.length);
@@ -368,9 +381,9 @@ function render(d) {
     }
   });
 
-  // ── Radar — volumen vs horas por negocio (normalizado) ──
+  // ── Radar — volumen por negocio (normalizado) ──
   kill("radarChart");
-  const radarCats = d.negVol.categories.filter(nv => d.negHoras.categories.find(nh => nh.name === nv.name)).slice(0, 6);
+  const radarCats = sorted(negVolMerged).slice(0, 6);
   const maxVol = Math.max(...radarCats.map(c => c.ytd));
   charts.radarChart = new Chart(document.getElementById("radarChart"), {
     type: "radar",
