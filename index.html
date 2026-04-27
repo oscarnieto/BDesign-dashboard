@@ -65,8 +65,8 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
 .cw canvas{display:block!important;width:100%!important;height:100%!important}
 
 /* Pie layout */
-.pie-layout{display:flex;align-items:center;gap:16px;min-height:200px}
-.pie-wrap{width:clamp(140px,16vw,200px);height:clamp(140px,16vw,200px);flex-shrink:0}
+.pie-layout{display:flex;align-items:center;gap:16px;min-height:240px}
+.pie-wrap{flex:0 0 clamp(160px,40%,260px);height:clamp(160px,40%,260px)}
 .pie-wrap canvas{display:block!important;width:100%!important;height:100%!important}
 .pie-leg{flex:1;display:flex;flex-direction:column;gap:5px;min-width:0}
 .pie-li{display:flex;align-items:center;gap:7px;font-size:clamp(9px,.9vw,11px);color:var(--gray2)}
@@ -89,7 +89,8 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
 ::-webkit-scrollbar-thumb{background:var(--n1);border-radius:3px}
 
 @media(max-width:640px){
-  .pie-leg{display:none}
+  .pie-leg{font-size:10px;gap:3px}
+  .pie-li{gap:5px}
 }
 </style>
 </head>
@@ -102,7 +103,6 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
 </header>
 
 <main>
-  <div class="sec">Indicadores clave</div>
   <div class="kg">
     <div class="kc" id="k0"><div class="kl">Total trabajos YTD</div><div class="kv" id="kv0">—</div><div class="ks" id="ks0"></div></div>
     <div class="kc" id="k1"><div class="kl">Total horas YTD</div><div class="kv" id="kv1">—</div><div class="ks" id="ks1"></div></div>
@@ -110,13 +110,11 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
     <div class="kc" id="k3"><div class="kl">Ciudades activas</div><div class="kv" id="kv3">—</div><div class="ks" id="ks3"></div></div>
   </div>
 
-  <div class="sec">Tipología y negocio — Volumen</div>
   <div class="g2">
     <div class="cc"><div class="ct">Tipología — Ranking YTD</div><div class="cw"><canvas id="tc"></canvas></div></div>
     <div class="cc"><div class="ct">Negocio — Volumen YTD</div><div class="cw"><canvas id="nc"></canvas></div></div>
   </div>
 
-  <div class="sec">Negocio — Horas y Ciudad</div>
   <div class="g2">
     <div class="cc"><div class="ct">Negocio — Horas YTD</div><div class="cw"><canvas id="nhc"></canvas></div></div>
     <div class="cc">
@@ -128,7 +126,6 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
     </div>
   </div>
 
-  <div class="sec">Evolución mensual</div>
   <div class="g2">
     <div class="cc full">
       <div class="ct">Total trabajos vs Horas — Evolución mensual</div>
@@ -140,8 +137,8 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
 
   <div class="sec">Redes sociales</div>
   <div class="rg">
-    <div class="rk"><div class="kl">Publicaciones YTD</div><div class="kv" id="rv">—</div><div class="mbars" id="rvb"></div></div>
-    <div class="rk"><div class="kl">Horas dedicadas YTD</div><div class="kv" id="rh">—</div><div class="mbars" id="rhb"></div></div>
+    <div class="rk"><div class="kl">RRSS: Publicaciones YTD</div><div class="kv" id="rv">—</div><div class="mbars" id="rvb"></div></div>
+    <div class="rk"><div class="kl">RRSS: Horas dedicadas YTD</div><div class="kv" id="rh">—</div><div class="mbars" id="rhb"></div></div>
   </div>
 </main>
 
@@ -242,10 +239,14 @@ function render(d) {
     setTimeout(() => e.classList.add("in"), 80 + i * 70);
   });
 
-  // Barras verticales
+  // Barras verticales — filtrar "Brand Design" de negHoras
+  const negHorasFiltradas = {
+    ...d.negHoras,
+    categories: d.negHoras.categories.filter(c => c.name.trim().toLowerCase() !== "brand design")
+  };
   vBar("tc", d.tipologia.categories, " trabajos");
   vBar("nc", d.negVol.categories, " trabajos");
-  vBar("nhc", d.negHoras.categories, " h");
+  vBar("nhc", negHorasFiltradas.categories, " h");
 
   // Ciudad — tarta
   kill("cc2");
