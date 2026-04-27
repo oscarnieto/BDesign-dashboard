@@ -32,14 +32,12 @@ header{
   padding:4px 12px;border-radius:20px;white-space:nowrap;
 }
 
-main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin:0 auto}
+main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin:0 auto;display:flex;flex-direction:column;gap:var(--gap)}
 
 .sec{
   font-size:clamp(9px,.9vw,11px);font-weight:700;letter-spacing:.14em;text-transform:uppercase;
-  color:var(--gray);margin:clamp(18px,2.5vw,28px) 0 clamp(10px,1.5vw,16px);
-  display:flex;align-items:center;gap:8px;
+  color:var(--gray);display:flex;align-items:center;gap:8px;
 }
-.sec:first-child{margin-top:0}
 .sec::after{content:"";flex:1;height:1px;background:var(--border)}
 
 /* KPIs */
