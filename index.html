@@ -25,7 +25,7 @@ header{
 }
 .logo-img{height:clamp(30px,4vw,44px);width:auto;border-radius:4px;flex-shrink:0}
 .brand{font-size:clamp(13px,1.6vw,18px);font-weight:700;white-space:nowrap}
-.brand b{color:var(--yellow)}
+.brand b{color:var(--white)}
 .pbadge{
   margin-left:auto;background:rgba(255,222,0,.1);border:1px solid rgba(255,222,0,.3);
   color:var(--yellow);font-size:clamp(10px,1.1vw,12px);font-weight:700;
@@ -196,6 +196,12 @@ function mergeResidencial(cats) {
   return [...others, merged];
 }
 
+// Renombrar categorías del Excel
+const RENAMES = { "MKT": "Corporativo" };
+function renameCategories(cats) {
+  return cats.map(c => ({ ...c, name: RENAMES[c.name.trim()] || c.name }));
+}
+
 function vBar(canvasId, data, suf) {
   kill(canvasId);
   const mob = isMobile();
@@ -265,11 +271,11 @@ function render(d) {
     setTimeout(() => e.classList.add("in"), 80 + i * 70);
   });
 
-  // Barras verticales — filtrar "Brand Design" de negHoras, fusionar Residencial
-  const tipologiaMerged   = mergeResidencial(d.tipologia.categories);
-  const negVolMerged      = mergeResidencial(d.negVol.categories);
+  // Barras verticales — filtrar "Brand Design" de negHoras, fusionar Residencial, renombrar
+  const tipologiaMerged   = mergeResidencial(renameCategories(d.tipologia.categories));
+  const negVolMerged      = mergeResidencial(renameCategories(d.negVol.categories));
   const negHorasMerged    = mergeResidencial(
-    d.negHoras.categories.filter(c => c.name.trim().toLowerCase() !== "brand design")
+    renameCategories(d.negHoras.categories.filter(c => c.name.trim().toLowerCase() !== "brand design"))
   );
   vBar("tc",  tipologiaMerged,  " trabajos");
   vBar("nc",  negVolMerged,     " trabajos");
@@ -277,7 +283,7 @@ function render(d) {
 
   // Ciudad — tarta
   kill("cc2");
-  const cs = sorted(d.ciudad.categories);
+  const cs = sorted(renameCategories(d.ciudad.categories));
   const cc = cols(cs.length);
   const ctot = cs.reduce((s, c) => s + c.ytd, 0);
   charts["cc2"] = new Chart(document.getElementById("cc2"), {
