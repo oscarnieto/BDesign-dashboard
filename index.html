@@ -7,142 +7,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <link rel="stylesheet" href="style.css">
-:root{
-  --bg:#12152a;--card:#1a1e38;--border:rgba(255,255,255,.07);
-  --yellow:#FFDE00;--n1:#464a72;--n2:#4f547f;--n3:#585d8c;--n4:#616699;--n5:#6b709e;--n6:#7478a8;--n7:#7e82b1;
-  --white:#fff;--gray:#9499c0;--gray2:#c2c5da;--red:#ff5566;--green:#44cc88;
-  --r:clamp(8px,1vw,14px);--gap:clamp(12px,2vw,24px);--pad:clamp(14px,2vw,26px);
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:"Montserrat",sans-serif;background:var(--bg);color:var(--white);min-height:100vh}
-
-header{
-  display:flex;align-items:center;gap:clamp(8px,2vw,20px);
-  padding:clamp(10px,1.5vw,16px) clamp(14px,3vw,32px);
-  background:var(--card);border-bottom:1px solid var(--border);
-  position:sticky;top:0;z-index:100;
-}
-.logo-img{height:clamp(30px,4vw,44px);width:auto;border-radius:4px;flex-shrink:0}
-.brand{font-size:clamp(13px,1.6vw,18px);font-weight:700;white-space:nowrap}
-.brand b{color:var(--white)}
-.pbadge{
-  background:rgba(255,222,0,.1);border:1px solid rgba(255,222,0,.3);
-  color:var(--yellow);font-size:clamp(10px,1.1vw,12px);font-weight:700;
-  padding:4px 12px;border-radius:20px;white-space:nowrap;
-}
-
-main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin:0 auto;display:flex;flex-direction:column;gap:var(--gap)}
-
-.sec{
-  font-size:clamp(9px,.9vw,11px);font-weight:700;letter-spacing:.14em;text-transform:uppercase;
-  color:var(--gray);display:flex;align-items:center;gap:8px;
-}
-.sec::after{content:"";flex:1;height:1px;background:var(--border)}
-
-/* KPIs */
-.kg{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:var(--gap)}
-.kc{
-  background:var(--card);border:1px solid var(--border);border-radius:var(--r);
-  padding:var(--pad);position:relative;overflow:hidden;
-  opacity:0;transform:translateY(16px);transition:opacity .45s ease,transform .45s ease;
-}
-.kc.in{opacity:1;transform:none}
-.kc::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--yellow),transparent)}
-.kl{font-size:clamp(9px,.9vw,11px);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--gray);margin-bottom:6px}
-.kv{font-size:clamp(26px,3.5vw,44px);font-weight:800;color:var(--yellow);letter-spacing:-.02em;line-height:1;margin-bottom:6px}
-.ks{font-size:clamp(10px,1vw,12px);color:var(--gray2)}
-.ks .up{color:var(--green)}.ks .dn{color:var(--red)}
-
-/* Chart grid */
-.g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:var(--gap)}
-.cc{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:var(--pad);display:flex;flex-direction:column;gap:12px}
-.cc.full{grid-column:1/-1}
-.ct{font-size:clamp(11px,1.2vw,13px);font-weight:700;color:var(--gray2);letter-spacing:.02em}
-.cw{position:relative;flex:1;min-height:240px}
-.cw canvas{display:block!important;width:100%!important;height:100%!important}
-
-/* Pie layout */
-.pie-layout{display:flex;align-items:center;gap:16px;min-height:320px}
-.pie-wrap{flex:0 0 clamp(240px,62%,420px);height:clamp(240px,62%,420px)}
-.pie-wrap canvas{display:block!important;width:100%!important;height:100%!important}
-.pie-leg{flex:1;display:flex;flex-direction:column;gap:5px;min-width:0}
-.pie-li{display:flex;align-items:center;gap:7px;font-size:clamp(9px,.9vw,11px);color:var(--gray2)}
-.pie-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.pie-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:2px}
-.pie-val{font-weight:700;color:var(--white);white-space:nowrap}
-
-/* RRSS */
-.rg{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--gap)}
-.rk{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:var(--pad);position:relative;overflow:hidden}
-.rk::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--n3),transparent)}
-.mbars{display:flex;flex-direction:column;gap:4px;margin-top:8px}
-.mrow{display:flex;align-items:center;gap:6px}
-.mm{font-size:clamp(9px,.9vw,11px);color:var(--gray);width:clamp(70px,9vw,100px);flex-shrink:0}
-.mbw{flex:1;height:13px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
-.mbf{height:100%;border-radius:3px;transition:width .6s}
-.mv{font-size:clamp(10px,1vw,12px);font-weight:700;width:30px;text-align:right;color:var(--white);flex-shrink:0}
-
-::-webkit-scrollbar{width:5px;height:5px}
-::-webkit-scrollbar-thumb{background:var(--n1);border-radius:3px}
-
-@media(max-width:640px){
-  .pie-leg{font-size:10px;gap:3px}
-  .pie-li{gap:5px}
-  .pie-layout{flex-direction:column;align-items:center}
-  .pie-wrap{flex:none;width:80vw;height:80vw;max-width:320px;max-height:320px}
-  .pie-leg{width:100%}
-}
-
-/* Header right group */
-.header-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-
-/* Month filter */
-.month-filter{
-  background:var(--card);border:1px solid var(--border);color:var(--gray2);
-  font-family:"Montserrat",sans-serif;font-size:clamp(10px,1.1vw,12px);font-weight:600;
-  padding:4px 28px 4px 10px;border-radius:20px;cursor:pointer;outline:none;
-  appearance:none;-webkit-appearance:none;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239499c0' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 10px center;
-}
-.month-filter option{background:#1a1e38}
-
-/* Upload button */
-.upload-btn{
-  display:flex;align-items:center;gap:6px;
-  background:rgba(255,255,255,.06);border:1px solid var(--border);
-  color:var(--gray2);font-family:"Montserrat",sans-serif;
-  font-size:clamp(10px,1.1vw,12px);font-weight:600;
-  padding:4px 12px;border-radius:20px;cursor:pointer;white-space:nowrap;
-  transition:background .2s,border-color .2s;
-}
-.upload-btn:hover{background:rgba(255,255,255,.11);border-color:rgba(255,255,255,.18)}
-.upload-btn input[type=file]{display:none}
-@media(max-width:480px){.upload-btn span{display:none}}
-
-/* Drop overlay */
-.drop-overlay{
-  position:fixed;inset:0;background:rgba(18,21,42,.93);z-index:500;
-  display:none;align-items:center;justify-content:center;
-  backdrop-filter:blur(4px);
-}
-.drop-overlay.active{display:flex}
-.drop-box{
-  border:2px dashed var(--yellow);border-radius:16px;
-  padding:clamp(32px,5vw,64px) clamp(40px,8vw,96px);
-  text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;
-}
-.drop-box p{font-size:clamp(16px,2.2vw,22px);font-weight:700;color:var(--white)}
-.drop-sub{font-size:clamp(11px,1.2vw,13px)!important;color:var(--gray)!important;font-weight:400!important}
-
-/* Error card */
-.error-card{
-  background:rgba(255,85,102,.07);border:1px solid rgba(255,85,102,.25);
-  border-radius:var(--r);padding:var(--pad);
-  display:none;align-items:flex-start;gap:14px;color:var(--red);
-}
-.error-card.visible{display:flex}
 </head>
 <body>
 
@@ -151,6 +17,14 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
   <span class="brand"><b>B</b>Design Dashboard</span>
   <div class="header-right">
     <select id="monthFilter" class="month-filter" style="display:none" title="Filtrar hasta el mes"></select>
+    <button class="export-btn" id="exportBtn" title="Exportar como imagen PNG">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span>Exportar PNG</span>
+    </button>
+    <button class="view-data-btn" id="viewDataBtn" title="Ver datos en tabla">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
+      <span>Ver datos</span>
+    </button>
     <label class="upload-btn" for="fileInput" title="Cargar un archivo Excel">
       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       <span>Cargar Excel</span>
@@ -226,6 +100,16 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
     <div class="rk"><div class="kl">RRSS: Horas dedicadas YTD</div><div class="kv" id="rh">—</div><div class="mbars" id="rhb"></div></div>
   </div>
 </main>
+
+<div class="data-panel" id="dataPanel">
+  <div class="dp-header">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
+    <span class="dp-title">Datos del periodo</span>
+    <button class="dp-close" id="dpClose" title="Cerrar">✕</button>
+  </div>
+  <div class="dp-tabs" id="dpTabs"></div>
+  <div class="dp-body" id="dpBody"></div>
+</div>
 
 <script src="main.js"></script>
 </body>

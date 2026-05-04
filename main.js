@@ -3,6 +3,12 @@ const N = ["#464a72","#4f547f","#585d8c","#616699","#6b709e","#7478a8","#7e82b1"
 let charts = {};
 let lastData = null;
 
+// ── Tooltip global defaults (mejora móvil) ────────────────
+Chart.defaults.plugins.tooltip.position = 'nearest';
+Chart.defaults.plugins.tooltip.caretPadding = 8;
+Chart.defaults.plugins.tooltip.padding = 10;
+
+
 // ── Error display ──────────────────────────────────────────
 function showError(msg) {
   document.getElementById("errorMsg").textContent = msg;
@@ -465,6 +471,90 @@ document.getElementById("fileInput").addEventListener("change", e => {
   e.target.value = "";
 });
 
+
+// ── Tabla de datos ────────────────────────────────────────
+function buildDataPanel(d) {
+  const sections = [
+    { key: "tipologia", label: "Tipología",       suffix: "trabajos" },
+    { key: "negVol",    label: "Negocio Vol.",     suffix: "trabajos" },
+    { key: "negHoras",  label: "Negocio Horas",   suffix: "h"        },
+    { key: "ciudad",    label: "Ciudad",           suffix: "trabajos" },
+  ];
+  const tabsEl = document.getElementById("dpTabs");
+  const bodyEl = document.getElementById("dpBody");
+
+  tabsEl.innerHTML = sections.map((s, i) =>
+    `<button class="dp-tab${i === 0 ? " active" : ""}" data-idx="${i}">${s.label}</button>`
+  ).join("");
+
+  function renderTable(idx) {
+    const s = sections[idx];
+    const data = d[s.key];
+    if (!data || !data.categories.length) {
+      bodyEl.innerHTML = '<p style="color:var(--gray);padding:16px">Sin datos para esta sección.</p>';
+      return;
+    }
+    const months = data.months;
+    const cats   = data.categories;
+    const mTotals = months.map((_, mi) => cats.reduce((sum, c) => sum + (c.monthly[mi] || 0), 0));
+    const ytdTot  = cats.reduce((sum, c) => sum + c.ytd, 0);
+    bodyEl.innerHTML = `<table class="dp-table">
+      <thead><tr>
+        <th>Categoría</th>
+        ${months.map(m => `<th>${m}</th>`).join("")}
+        <th class="ytd-col">YTD</th>
+      </tr></thead>
+      <tbody>
+        ${cats.map(c => `<tr>
+          <td>${c.name}</td>
+          ${c.monthly.map(v => `<td>${v.toLocaleString("es-ES")}</td>`).join("")}
+          <td class="ytd-col">${c.ytd.toLocaleString("es-ES")}</td>
+        </tr>`).join("")}
+      </tbody>
+      <tfoot><tr>
+        <td>Total</td>
+        ${mTotals.map(t => `<td>${t.toLocaleString("es-ES")}</td>`).join("")}
+        <td class="ytd-col">${ytdTot.toLocaleString("es-ES")}</td>
+      </tr></tfoot>
+    </table>`;
+  }
+
+  renderTable(0);
+  tabsEl.addEventListener("click", e => {
+    const tab = e.target.closest(".dp-tab");
+    if (!tab) return;
+    tabsEl.querySelectorAll(".dp-tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    renderTable(parseInt(tab.dataset.idx));
+  });
+}
+
+// ── Exportar PNG ──────────────────────────────────────────
+async function exportDashboard() {
+  const btn = document.getElementById("exportBtn");
+  const originalHTML = btn.innerHTML;
+  btn.innerHTML = "<span>Generando...</span>";
+  btn.disabled = true;
+  try {
+    const canvas = await html2canvas(document.querySelector("main"), {
+      backgroundColor: "#12152a",
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      ignoreElements: el => el.id === "errorCard"
+    });
+    const link = document.createElement("a");
+    const period = document.getElementById("pb").textContent.replace(/[^a-zA-Z0-9\-]/g, "_");
+    link.download = `dashboard-${period || new Date().toISOString().slice(0, 10)}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  } catch (e) {
+    alert("Error al exportar: " + e.message);
+  }
+  btn.innerHTML = originalHTML;
+  btn.disabled = false;
+}
+
 // ── Drag & drop ───────────────────────────────────────────
 const overlay = document.getElementById("dropOverlay");
 let dragCounter = 0;
@@ -485,4 +575,20 @@ document.addEventListener("drop", e => {
   overlay.classList.remove("active");
   const file = e.dataTransfer && e.dataTransfer.files[0];
   if (file) handleFile(file);
+});
+
+// ── Export button ─────────────────────────────────────────
+document.getElementById("exportBtn").addEventListener("click", exportDashboard);
+
+// ── View data button ──────────────────────────────────────
+document.getElementById("viewDataBtn").addEventListener("click", () => {
+  if (!lastData) return;
+  buildDataPanel(lastData);
+  document.getElementById("dataPanel").classList.add("open");
+});
+document.getElementById("dpClose").addEventListener("click", () => {
+  document.getElementById("dataPanel").classList.remove("open");
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") document.getElementById("dataPanel").classList.remove("open");
 });
