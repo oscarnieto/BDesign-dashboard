@@ -1,0 +1,488 @@
+const Y = "#FFDE00";
+const N = ["#464a72","#4f547f","#585d8c","#616699","#6b709e","#7478a8","#7e82b1"];
+let charts = {};
+let lastData = null;
+
+// ── Error display ──────────────────────────────────────────
+function showError(msg) {
+  document.getElementById("errorMsg").textContent = msg;
+  document.getElementById("errorCard").classList.add("visible");
+  document.getElementById("pb").textContent = "Sin datos";
+}
+function hideError() {
+  document.getElementById("errorCard").classList.remove("visible");
+}
+
+// ── Month filter ───────────────────────────────────────────
+function populateMonthFilter(months) {
+  const sel = document.getElementById("monthFilter");
+  sel.innerHTML = '<option value="-1">YTD completo</option>' +
+    months.map((m, i) => `<option value="${i}">${m}</option>`).join("");
+  sel.value = "-1";
+  sel.style.display = "";
+}
+
+function sliceData(d, ci) {
+  function sc(cats) {
+    return cats.map(c => {
+      const monthly = c.monthly.slice(0, ci + 1);
+      return { ...c, monthly, ytd: c.monthly[ci] || 0 };
+    });
+  }
+  const evSlice = d.entrega.values.slice(0, ci + 1);
+  const rrssVm  = (d.rrss && d.rrss.volMon) ? d.rrss.volMon.slice(0, ci + 1) : [];
+  const rrssHm  = (d.rrss && d.rrss.horMon) ? d.rrss.horMon.slice(0, ci + 1) : [];
+  return {
+    tipologia: { months: d.tipologia.months.slice(0, ci + 1), categories: sc(d.tipologia.categories) },
+    negVol:    { months: d.negVol.months.slice(0, ci + 1),    categories: sc(d.negVol.categories) },
+    negHoras:  { months: d.negHoras.months.slice(0, ci + 1),  categories: sc(d.negHoras.categories) },
+    ciudad:    { months: d.ciudad.months.slice(0, ci + 1),    categories: sc(d.ciudad.categories) },
+    entrega: {
+      months: d.entrega.months.slice(0, ci + 1),
+      values: evSlice,
+      mediaYTD: evSlice[ci] !== undefined ? evSlice[ci] : 0
+    },
+    rrss: d.rrss ? {
+      months: d.rrss.months.slice(0, ci + 1),
+      volMon: rrssVm, horMon: rrssHm,
+      volYTD: rrssVm[ci] || 0,
+      horYTD: rrssHm[ci] || 0
+    } : d.rrss
+  };
+}
+
+function renderWithFilter() {
+  if (!lastData) return;
+  const ci = parseInt(document.getElementById("monthFilter").value);
+  if (ci === -1) {
+    render(lastData);
+  } else {
+    render(sliceData(lastData, ci));
+    document.getElementById("pb").textContent = lastData.tipologia.months[ci];
+  }
+}
+
+// ── File upload ────────────────────────────────────────────
+function handleFile(file) {
+  if (!file) return;
+  if (!file.name.match(/\.xlsx?$/i)) {
+    showError("El archivo debe ser un Excel (.xlsx). Archivo recibido: " + file.name);
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      lastData = parseExcel(e.target.result);
+      hideError();
+      populateMonthFilter(lastData.tipologia.months);
+      document.getElementById("monthFilter").value = "-1";
+      render(lastData);
+    } catch (err) {
+      showError(err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function isMobile() { return window.innerWidth <= 640; }
+
+function cols(n) {
+  return Array.from({length: n}, (_, i) => i === 0 ? Y : N[Math.min(i - 1, N.length - 1)]);
+}
+function sorted(cats) {
+  return [...cats].sort((a, b) => b.ytd - a.ytd);
+}
+function sub(cur, prev, u = "") {
+  if (prev === null) return "";
+  const d = cur - prev;
+  if (d === 0) return "Sin cambios";
+  const cl = d > 0 ? "up" : "dn";
+  return `<span class="${cl}">${d > 0 ? "▲" : "▼"} ${d > 0 ? "+" : ""}${Number.isInteger(d) ? d : d.toFixed(1)}${u}</span> vs mes anterior`;
+}
+function kill(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+function period(months) {
+  if (!months || !months.length) return "";
+  return months.length === 1 ? months[0] : months[0] + " – " + months[months.length - 1];
+}
+
+function mergeResidencial(cats) {
+  const residKey = cats.filter(c => /residencial/i.test(c.name));
+  const others   = cats.filter(c => !/residencial/i.test(c.name));
+  if (residKey.length === 0) return cats;
+  const merged = {
+    name: "Residencial total",
+    ytd: residKey.reduce((s, c) => s + c.ytd, 0),
+    monthly: residKey[0].monthly.map((_, i) => residKey.reduce((s, c) => s + (c.monthly[i] || 0), 0))
+  };
+  return [...others, merged];
+}
+
+// Renombrar categorías del Excel
+const RENAMES = { "MKT": "Corporativo" };
+function renameCategories(cats) {
+  return cats.map(c => ({ ...c, name: RENAMES[c.name.trim()] || c.name }));
+}
+
+function renderCombo(d, mob) {
+  kill("combo");
+  const ml = d.tipologia.months;
+  const wm = ml.map((_, i) => d.tipologia.categories.reduce((s, c) => s + (c.monthly[i] || 0), 0));
+  const hm = ml.map((_, i) => d.negHoras.categories.reduce((s, c) => s + (c.monthly[i] || 0), 0));
+  const mxi = wm.indexOf(Math.max(...wm));
+  charts.combo = new Chart(document.getElementById("combo"), {
+    type: "bar",
+    data: {
+      labels: ml,
+      datasets: [
+        {
+          type: "line", label: "Total horas", data: hm,
+          borderColor: "#ffffff", backgroundColor: "rgba(255,255,255,.08)",
+          pointBackgroundColor: "#ffffff", pointBorderColor: "#12152a", pointBorderWidth: 2,
+          pointRadius: 5, tension: .35, fill: true, yAxisID: "y1", order: 0
+        },
+        {
+          type: "bar", label: "Total trabajos", data: wm,
+          backgroundColor: wm.map((_, i) => i === mxi ? Y : "#464a72"),
+          borderRadius: 4, yAxisID: "y", order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { display: !mob, position: "top", labels: { color: "#c2c5da", font: { family: "Montserrat", size: 11 }, boxWidth: 10, padding: 14 } }
+      },
+      scales: {
+        x: { ticks: { color: "#c2c5da", font: { family: "Montserrat", size: 10 } }, grid: { color: "rgba(255,255,255,.04)" }, border: { display: false } },
+        y: { position: "left", ticks: { color: "#c2c5da", font: { family: "Montserrat", size: 10 } }, grid: { color: "rgba(255,255,255,.04)" }, border: { display: false } },
+        y1: { position: "right", ticks: { color: "rgba(255,255,255,.5)", font: { family: "Montserrat", size: 10 } }, grid: { display: false }, border: { display: false } }
+      }
+    }
+  });
+}
+
+function vBar(canvasId, data, suf) {
+  kill(canvasId);
+  const mob = isMobile();
+  const s = sorted(mob ? data.slice(0, 5) : data);
+  const tot = sorted(data).reduce((a, c) => a + c.ytd, 0); // always full total for %
+  const c = cols(s.length);
+  charts[canvasId] = new Chart(document.getElementById(canvasId), {
+    type: "bar",
+    data: {
+      labels: s.map(c => c.name),
+      datasets: [{
+        data: s.map(c => c.ytd),
+        backgroundColor: c,
+        borderRadius: 4,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => " " + ctx.parsed.y.toLocaleString("es-ES") + suf + " (" + Math.round(ctx.parsed.y / tot * 100) + "%)" } }
+      },
+      scales: {
+        x: { ticks: { display: !mob, color: "#c2c5da", font: { family: "Montserrat", size: 10 }, maxRotation: 35, minRotation: 25 }, grid: { display: false }, border: { display: false } },
+        y: { ticks: { color: "#9499c0", font: { family: "Montserrat", size: 10 } }, grid: { color: "rgba(255,255,255,.05)" }, border: { display: false } }
+      }
+    }
+  });
+}
+
+function render(d) {
+  document.getElementById("pb").textContent = period(d.tipologia.months);
+  const lm = d.tipologia.months.length - 1;
+
+  // KPI 0 — Total trabajos
+  const tw = d.tipologia.categories.reduce((s, c) => s + c.ytd, 0);
+  const wl = d.tipologia.categories.reduce((s, c) => s + (c.monthly[lm] || 0), 0);
+  const wp = lm > 0 ? d.tipologia.categories.reduce((s, c) => s + (c.monthly[lm - 1] || 0), 0) : null;
+  document.getElementById("kv0").textContent = tw.toLocaleString("es-ES");
+  document.getElementById("ks0").innerHTML = sub(wl, wp);
+
+  // KPI 1 — Total horas
+  const th = d.negHoras.categories.reduce((s, c) => s + c.ytd, 0);
+  const hl = d.negHoras.categories.reduce((s, c) => s + (c.monthly[lm] || 0), 0);
+  const hp = lm > 0 ? d.negHoras.categories.reduce((s, c) => s + (c.monthly[lm - 1] || 0), 0) : null;
+  document.getElementById("kv1").textContent = th.toLocaleString("es-ES");
+  document.getElementById("ks1").innerHTML = sub(hl, hp, " h");
+
+  // KPI 2 — Entrega
+  const ev = d.entrega.values;
+  const el = ev.length > 0 ? ev[Math.min(lm, ev.length - 1)] : 0;
+  const ep = lm > 0 && ev.length > 1 ? ev[Math.min(lm - 1, ev.length - 1)] : null;
+  document.getElementById("kv2").textContent = d.entrega.mediaYTD.toFixed(1) + " d";
+  document.getElementById("ks2").innerHTML = sub(el, ep, " d");
+
+  // KPI 3 — Ciudades activas
+  const ac = d.ciudad.categories.filter(c => c.ytd > 0).length;
+  document.getElementById("kv3").textContent = ac;
+  document.getElementById("ks3").textContent = ac + " ciudades con actividad";
+
+  // Fade-in KPIs
+  [0, 1, 2, 3].forEach(i => {
+    const e = document.getElementById("k" + i);
+    e.classList.remove("in");
+    setTimeout(() => e.classList.add("in"), 80 + i * 70);
+  });
+
+  // Barras verticales — filtrar "Brand Design" de negHoras, fusionar Residencial, renombrar
+  const tipologiaMerged   = mergeResidencial(renameCategories(d.tipologia.categories));
+  const negVolMerged      = mergeResidencial(renameCategories(d.negVol.categories));
+  const negHorasMerged    = mergeResidencial(
+    renameCategories(d.negHoras.categories.filter(c => c.name.trim().toLowerCase() !== "brand design"))
+  );
+  vBar("tc",  tipologiaMerged,  " trabajos");
+  vBar("nc",  negVolMerged,     " trabajos");
+  vBar("nhc", negHorasMerged,   " h");
+
+  // Ciudad — tarta
+  kill("cc2");
+  const cs = sorted(renameCategories(d.ciudad.categories));
+  const cc = cols(cs.length);
+  const ctot = cs.reduce((s, c) => s + c.ytd, 0);
+  charts["cc2"] = new Chart(document.getElementById("cc2"), {
+    type: "pie",
+    data: {
+      labels: cs.map(c => c.name),
+      datasets: [{ data: cs.map(c => c.ytd), backgroundColor: cc, borderWidth: 0, hoverOffset: 5 }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => " " + ctx.parsed.toLocaleString("es-ES") + " (" + Math.round(ctx.parsed / ctot * 100) + "%)" } }
+      }
+    }
+  });
+  document.getElementById("cc2leg").innerHTML = cs.map((c, i) =>
+    `<div class="pie-li"><div class="pie-dot" style="background:${cc[i]}"></div><span class="pie-name">${c.name}</span><span class="pie-val">${c.ytd.toLocaleString("es-ES")}</span></div>`
+  ).join("");
+
+  // Combo
+  renderCombo(d, isMobile());
+
+  // RRSS
+  document.getElementById("rv").textContent = d.rrss.volYTD.toLocaleString("es-ES");
+  document.getElementById("rh").textContent = d.rrss.horYTD.toLocaleString("es-ES") + " h";
+  function mb(id, vals, months) {
+    const mx = Math.max(...vals);
+    const mxi = vals.indexOf(mx);
+    document.getElementById(id).innerHTML = months.map((m, i) => {
+      const p = mx > 0 ? vals[i] / mx * 100 : 0;
+      const cl = i === mxi ? Y : "#464a72";
+      return `<div class="mrow"><div class="mm">${m}</div><div class="mbw"><div class="mbf" style="width:${p}%;background:${cl}"></div></div><div class="mv">${vals[i]}</div></div>`;
+    }).join("");
+  }
+  mb("rvb", d.rrss.volMon, d.rrss.months);
+  mb("rhb", d.rrss.horMon, d.rrss.months);
+
+  // ── Ratio horas/trabajo por negocio ──
+  kill("ratioChart");
+  const negCommon = negVolMerged.filter(nv => {
+    return negHorasMerged.find(nh => nh.name === nv.name);
+  }).map(nv => {
+    const nh = negHorasMerged.find(nh => nh.name === nv.name);
+    return { name: nv.name, ratio: nv.ytd > 0 ? parseFloat((nh.ytd / nv.ytd).toFixed(1)) : 0 };
+  }).sort((a, b) => b.ratio - a.ratio);
+  const ratioColors = cols(negCommon.length);
+  charts.ratioChart = new Chart(document.getElementById("ratioChart"), {
+    type: "bar",
+    data: {
+      labels: negCommon.map(c => c.name),
+      datasets: [{ data: negCommon.map(c => c.ratio), backgroundColor: ratioColors, borderRadius: 4, borderSkipped: false }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => " " + ctx.parsed.y.toFixed(1) + " h/trabajo" } }
+      },
+      scales: {
+        x: { ticks: { display: !isMobile(), color: "#c2c5da", font: { family: "Montserrat", size: 10 }, maxRotation: 35, minRotation: 25 }, grid: { display: false }, border: { display: false } },
+        y: { ticks: { color: "#9499c0", font: { family: "Montserrat", size: 10 } }, grid: { color: "rgba(255,255,255,.05)" }, border: { display: false } }
+      }
+    }
+  });
+
+  // ── Radar — volumen por negocio (normalizado) ──
+  kill("radarChart");
+  const radarCats = sorted(negVolMerged).slice(0, 6);
+  const maxVol = Math.max(...radarCats.map(c => c.ytd));
+  charts.radarChart = new Chart(document.getElementById("radarChart"), {
+    type: "radar",
+    data: {
+      labels: radarCats.map(c => c.name),
+      datasets: [
+        {
+          label: "Volumen trabajos",
+          data: radarCats.map(c => maxVol > 0 ? Math.round(c.ytd / maxVol * 100) : 0),
+          borderColor: Y, backgroundColor: "rgba(255,222,0,.15)", pointBackgroundColor: Y, pointRadius: 4, borderWidth: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        r: {
+          ticks: { display: false },
+          grid: { color: "rgba(255,255,255,.08)" },
+          angleLines: { color: "rgba(255,255,255,.08)" },
+          pointLabels: { color: "#c2c5da", font: { family: "Montserrat", size: 10 } }
+        }
+      }
+    }
+  });
+}
+
+function parseExcel(buf) {
+  const wb = XLSX.read(buf, { type: "array" });
+
+  function parseSheet(ws) {
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+    const h = rows[2];
+    if (!h) return null;
+    const yc = h.findIndex(c => c && String(c).toLowerCase().includes("total ytd"));
+    const mc = [];
+    for (let c = 1; c < (yc > 0 ? yc : h.length); c++) {
+      if (h[c]) mc.push({ i: c, n: String(h[c]) });
+    }
+    const cats = [];
+    for (let r = 3; r < rows.length; r++) {
+      const row = rows[r];
+      const cat = row && row[0] ? String(row[0]).trim() : "";
+      if (!cat || cat.toUpperCase() === "TOTAL") break;
+      cats.push({
+        name: cat,
+        monthly: mc.map(m => Number(row[m.i]) || 0),
+        ytd: yc >= 0 ? Number(row[yc]) || 0 : mc.reduce((s, m) => s + (Number(row[m.i]) || 0), 0)
+      });
+    }
+    return { months: mc.map(m => m.n), categories: cats };
+  }
+
+  const d = {};
+  ["Tipologia", "Negocio_Volumen", "Negocio_Horas", "Ciudad"].forEach(s => {
+    if (wb.Sheets[s]) {
+      const key = { Tipologia: "tipologia", Negocio_Volumen: "negVol", Negocio_Horas: "negHoras", Ciudad: "ciudad" }[s];
+      d[key] = parseSheet(wb.Sheets[s]);
+    }
+  });
+
+  // Entrega
+  const er = wb.Sheets["Entrega"] ? XLSX.utils.sheet_to_json(wb.Sheets["Entrega"], { header: 1, defval: null }) : null;
+  if (er) {
+    const h = er[2], dv = er[3], mv = er[4];
+    const ms = [], vs = [];
+    for (let c = 1; c < h.length; c++) {
+      if (h[c] && !String(h[c]).toLowerCase().includes("total")) {
+        ms.push(String(h[c]));
+        vs.push(Number(dv[c]) || 0);
+      }
+    }
+    const media = mv ? (Number(mv[1]) || 0) : (vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : 0);
+    d.entrega = { months: ms, values: vs, mediaYTD: media };
+  } else {
+    d.entrega = { months: [], values: [], mediaYTD: 0 };
+  }
+
+  // RRSS
+  const rr = wb.Sheets["RRSS"] ? XLSX.utils.sheet_to_json(wb.Sheets["RRSS"], { header: 1, defval: null }) : null;
+  if (rr) {
+    const h = rr[2], v = rr[3], hr = rr[4];
+    const ms = [], vm = [], hm = [];
+    let vY = 0, hY = 0;
+    for (let c = 1; c < h.length; c++) {
+      if (!h[c]) continue;
+      if (String(h[c]).toLowerCase().includes("total")) {
+        vY = Number(v[c]) || 0;
+        hY = Number(hr[c]) || 0;
+      } else {
+        ms.push(String(h[c]));
+        vm.push(Number(v[c]) || 0);
+        hm.push(Number(hr[c]) || 0);
+      }
+    }
+    d.rrss = { months: ms, volMon: vm, horMon: hm, volYTD: vY || vm.reduce((a, b) => a + b, 0), horYTD: hY || hm.reduce((a, b) => a + b, 0) };
+  }
+
+  if (!d.tipologia) throw new Error("Estructura de Excel no reconocida. Asegúrate de que el archivo tiene la hoja 'Tipologia'.");
+  return d;
+}
+
+async function fetchExcel() {
+  const errors = [];
+  for (const name of ["datos.xlsx", "datos2.xlsx"]) {
+    try {
+      const res = await fetch(name);
+      if (!res.ok) { errors.push(`${name}: HTTP ${res.status}`); continue; }
+      const buf = await res.arrayBuffer();
+      lastData = parseExcel(buf);
+      hideError();
+      populateMonthFilter(lastData.tipologia.months);
+      render(lastData);
+      return;
+    } catch (e) {
+      errors.push(e.message || name);
+    }
+  }
+  showError(
+    "No se encontró ningún archivo de datos válido. " +
+    "Usa el botón «Cargar Excel» para subir tu archivo manualmente. " +
+    (errors.length ? "(" + errors.join(" / ") + ")" : "")
+  );
+}
+
+// Re-render combo legend when crossing mobile breakpoint
+let wasMobile = isMobile();
+window.addEventListener("resize", () => {
+  const nowMobile = isMobile();
+  if (nowMobile !== wasMobile && lastData) {
+    wasMobile = nowMobile;
+    const ci = parseInt(document.getElementById("monthFilter").value);
+    const d = ci === -1 ? lastData : sliceData(lastData, ci);
+    renderCombo(d, nowMobile);
+  }
+});
+
+fetchExcel();
+
+// ── Month filter change ────────────────────────────────────
+document.getElementById("monthFilter").addEventListener("change", renderWithFilter);
+
+// ── File input ────────────────────────────────────────────
+document.getElementById("fileInput").addEventListener("change", e => {
+  handleFile(e.target.files[0]);
+  e.target.value = "";
+});
+
+// ── Drag & drop ───────────────────────────────────────────
+const overlay = document.getElementById("dropOverlay");
+let dragCounter = 0;
+document.addEventListener("dragenter", e => {
+  if (e.dataTransfer && e.dataTransfer.types.includes("Files")) {
+    dragCounter++;
+    overlay.classList.add("active");
+  }
+});
+document.addEventListener("dragleave", () => {
+  dragCounter--;
+  if (dragCounter <= 0) { dragCounter = 0; overlay.classList.remove("active"); }
+});
+document.addEventListener("dragover", e => e.preventDefault());
+document.addEventListener("drop", e => {
+  e.preventDefault();
+  dragCounter = 0;
+  overlay.classList.remove("active");
+  const file = e.dataTransfer && e.dataTransfer.files[0];
+  if (file) handleFile(file);
+});
