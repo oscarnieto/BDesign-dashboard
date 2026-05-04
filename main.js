@@ -520,13 +520,13 @@ function buildDataPanel(d) {
   }
 
   renderTable(0);
-  tabsEl.addEventListener("click", e => {
+  tabsEl.onclick = e => {
     const tab = e.target.closest(".dp-tab");
     if (!tab) return;
     tabsEl.querySelectorAll(".dp-tab").forEach(t => t.classList.remove("active"));
     tab.classList.add("active");
     renderTable(parseInt(tab.dataset.idx));
-  });
+  };
 }
 
 // ── Exportar PNG ──────────────────────────────────────────

@@ -181,15 +181,21 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
 .dp-close:hover{color:var(--white);background:rgba(255,255,255,.08)}
 .dp-tabs{
   display:flex;gap:2px;overflow-x:auto;
-  padding:12px 24px 0;background:var(--card);flex-shrink:0;
+  padding:12px 24px 0;background:var(--card);
+  border-bottom:1px solid var(--border);flex-shrink:0;
 }
 .dp-tab{
   font-family:"Montserrat",sans-serif;font-size:11px;font-weight:600;
   padding:7px 16px;border-radius:8px 8px 0 0;cursor:pointer;
-  background:transparent;border:1px solid var(--border);border-bottom:none;
-  color:var(--gray);transition:background .15s,color .15s;white-space:nowrap;
+  background:transparent;border:1px solid transparent;
+  color:var(--gray);transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap;margin-bottom:-1px;
 }
-.dp-tab.active{background:var(--bg);color:var(--white)}
+.dp-tab:hover{color:var(--gray2)}
+.dp-tab.active{
+  background:var(--bg);color:var(--white);
+  border-color:var(--border);border-bottom-color:var(--bg);
+}
 .dp-body{flex:1;overflow:auto;padding:24px}
 .dp-table{width:100%;border-collapse:collapse;font-size:clamp(10px,1.1vw,12px)}
 .dp-table th{
