@@ -259,7 +259,7 @@ function sliceData(d, ci) {
   function sc(cats) {
     return cats.map(c => {
       const monthly = c.monthly.slice(0, ci + 1);
-      return { ...c, monthly, ytd: monthly.reduce((s, v) => s + v, 0) };
+      return { ...c, monthly, ytd: c.monthly[ci] || 0 };
     });
   }
   const evSlice = d.entrega.values.slice(0, ci + 1);
@@ -273,13 +273,13 @@ function sliceData(d, ci) {
     entrega: {
       months: d.entrega.months.slice(0, ci + 1),
       values: evSlice,
-      mediaYTD: evSlice.length ? evSlice.reduce((a, b) => a + b, 0) / evSlice.length : 0
+      mediaYTD: evSlice[ci] !== undefined ? evSlice[ci] : 0
     },
     rrss: d.rrss ? {
       months: d.rrss.months.slice(0, ci + 1),
       volMon: rrssVm, horMon: rrssHm,
-      volYTD: rrssVm.reduce((a, b) => a + b, 0),
-      horYTD: rrssHm.reduce((a, b) => a + b, 0)
+      volYTD: rrssVm[ci] || 0,
+      horYTD: rrssHm[ci] || 0
     } : d.rrss
   };
 }
