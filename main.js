@@ -244,10 +244,9 @@ function render(d) {
 
   // KPI 3 — Trabajos externalizados
   const fl = d.freelance ? d.freelance.categories.reduce((s, c) => s + c.ytd, 0) : 0;
-  const fll = d.freelance ? d.freelance.categories.reduce((s, c) => s + (c.monthly[lm] || 0), 0) : 0;
-  const flp = lm > 0 && d.freelance ? d.freelance.categories.reduce((s, c) => s + (c.monthly[lm - 1] || 0), 0) : null;
+  const flPct = tw > 0 ? Math.round(fl / tw * 100) : 0;
   document.getElementById("kv3").textContent = fl.toLocaleString("es-ES");
-  document.getElementById("ks3").innerHTML = sub(fll, flp);
+  document.getElementById("ks3").textContent = flPct + "% del total de trabajos";
 
   // Fade-in KPIs
   [0, 1, 2, 3].forEach(i => {
