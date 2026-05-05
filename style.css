@@ -43,6 +43,14 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
 .kv{font-size:clamp(26px,3.5vw,44px);font-weight:800;color:var(--yellow);letter-spacing:-.02em;line-height:1;margin-bottom:6px}
 .ks{font-size:clamp(10px,1vw,12px);color:var(--gray2)}
 .ks .up{color:var(--green)}.ks .dn{color:var(--red)}
+.fl-months{display:flex;flex-direction:column;gap:3px;margin-top:8px}
+.fl-row{display:flex;justify-content:space-between;align-items:baseline;font-size:clamp(9px,.85vw,11px);color:var(--gray)}
+.fl-row .fl-mon{color:var(--gray)}
+.fl-row .fl-val{font-weight:700;color:var(--white)}
+.fl-row .fl-pct{color:var(--yellow);font-weight:600;margin-left:4px}
+.fl-row.fl-ytd{border-top:1px solid var(--border);margin-top:3px;padding-top:4px;color:var(--gray2)}
+.fl-row.fl-ytd .fl-val{color:var(--yellow)}
+.fl-row.fl-ytd .fl-mon{color:var(--gray2)}
 
 /* Chart grid */
 .g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:var(--gap)}
