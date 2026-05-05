@@ -243,23 +243,10 @@ function render(d) {
   document.getElementById("ks2").innerHTML = sub(el, ep, " d");
 
   // KPI 3 — Trabajos externalizados
-  const flMonths = d.tipologia.months;
-  const flMon = flMonths.map((_, i) =>
-    d.freelance ? d.freelance.categories.reduce((s, c) => s + (c.monthly[i] || 0), 0) : 0
-  );
-  const totMon = flMonths.map((_, i) =>
-    d.tipologia.categories.reduce((s, c) => s + (c.monthly[i] || 0), 0)
-  );
   const fl = d.freelance ? d.freelance.categories.reduce((s, c) => s + c.ytd, 0) : 0;
   const flPct = tw > 0 ? Math.round(fl / tw * 100) : 0;
   document.getElementById("kv3").textContent = fl.toLocaleString("es-ES");
-  document.getElementById("ks3").textContent = "";
-  document.getElementById("ks3m").innerHTML =
-    flMonths.map((m, i) => {
-      const pct = totMon[i] > 0 ? Math.round(flMon[i] / totMon[i] * 100) : 0;
-      return `<div class="fl-row"><span class="fl-mon">${shortMonth(m)}</span><span><span class="fl-val">${flMon[i]}</span><span class="fl-pct">(${pct}%)</span></span></div>`;
-    }).join("") +
-    `<div class="fl-row fl-ytd"><span class="fl-mon">YTD</span><span><span class="fl-val">${fl}</span><span class="fl-pct">(${flPct}%)</span></span></div>`;
+  document.getElementById("ks3").textContent = flPct + "% del total de trabajos";
 
   // Fade-in KPIs
   [0, 1, 2, 3].forEach(i => {
