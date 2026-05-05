@@ -106,32 +106,6 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
 }
 .month-filter option{background:#1a1e38}
 
-/* Upload button */
-.upload-btn{
-  display:flex;align-items:center;gap:6px;
-  background:rgba(255,255,255,.06);border:1px solid var(--border);
-  color:var(--gray2);font-family:"Montserrat",sans-serif;
-  font-size:clamp(10px,1.1vw,12px);font-weight:600;
-  padding:4px 12px;border-radius:20px;cursor:pointer;white-space:nowrap;
-  transition:background .2s,border-color .2s;
-}
-.upload-btn:hover{background:rgba(255,255,255,.11);border-color:rgba(255,255,255,.18)}
-.upload-btn input[type=file]{display:none}
-
-/* Drop overlay */
-.drop-overlay{
-  position:fixed;inset:0;background:rgba(18,21,42,.93);z-index:500;
-  display:none;align-items:center;justify-content:center;
-  backdrop-filter:blur(4px);
-}
-.drop-overlay.active{display:flex}
-.drop-box{
-  border:2px dashed var(--yellow);border-radius:16px;
-  padding:clamp(32px,5vw,64px) clamp(40px,8vw,96px);
-  text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;
-}
-.drop-box p{font-size:clamp(16px,2.2vw,22px);font-weight:700;color:var(--white)}
-.drop-sub{font-size:clamp(11px,1.2vw,13px)!important;color:var(--gray)!important;font-weight:400!important}
 
 /* Error card */
 .error-card{
@@ -256,5 +230,5 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
 
 @media(max-width:640px){
   .burger-btn{display:flex}
-  .export-btn,.view-data-btn,.upload-btn,.month-filter{display:none!important}
+  .export-btn,.view-data-btn,.month-filter{display:none!important}
 }

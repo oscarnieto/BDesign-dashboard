@@ -73,27 +73,6 @@ function renderWithFilter() {
   }
 }
 
-// ── File upload ────────────────────────────────────────────
-function handleFile(file) {
-  if (!file) return;
-  if (!file.name.match(/\.xlsx?$/i)) {
-    showError("El archivo debe ser un Excel (.xlsx). Archivo recibido: " + file.name);
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      lastData = parseExcel(e.target.result);
-      hideError();
-      populateMonthFilter(lastData.tipologia.months);
-      document.getElementById("monthFilter").value = "-1";
-      render(lastData);
-    } catch (err) {
-      showError(err.message);
-    }
-  };
-  reader.readAsArrayBuffer(file);
-}
 
 function isMobile() { return window.innerWidth <= 640; }
 
@@ -459,7 +438,6 @@ async function fetchExcel() {
   }
   showError(
     "No se encontró ningún archivo de datos válido. " +
-    "Usa el botón «Cargar Excel» para subir tu archivo manualmente. " +
     (errors.length ? "(" + errors.join(" / ") + ")" : "")
   );
 }
@@ -481,11 +459,6 @@ fetchExcel();
 // ── Month filter change ────────────────────────────────────
 document.getElementById("monthFilter").addEventListener("change", renderWithFilter);
 
-// ── File input ────────────────────────────────────────────
-document.getElementById("fileInput").addEventListener("change", e => {
-  handleFile(e.target.files[0]);
-  e.target.value = "";
-});
 
 
 // ── Tabla de datos ────────────────────────────────────────
@@ -571,27 +544,6 @@ async function exportDashboard() {
   btn.disabled = false;
 }
 
-// ── Drag & drop ───────────────────────────────────────────
-const overlay = document.getElementById("dropOverlay");
-let dragCounter = 0;
-document.addEventListener("dragenter", e => {
-  if (e.dataTransfer && e.dataTransfer.types.includes("Files")) {
-    dragCounter++;
-    overlay.classList.add("active");
-  }
-});
-document.addEventListener("dragleave", () => {
-  dragCounter--;
-  if (dragCounter <= 0) { dragCounter = 0; overlay.classList.remove("active"); }
-});
-document.addEventListener("dragover", e => e.preventDefault());
-document.addEventListener("drop", e => {
-  e.preventDefault();
-  dragCounter = 0;
-  overlay.classList.remove("active");
-  const file = e.dataTransfer && e.dataTransfer.files[0];
-  if (file) handleFile(file);
-});
 
 // ── Export button ─────────────────────────────────────────
 document.getElementById("exportBtn").addEventListener("click", exportDashboard);
@@ -634,7 +586,6 @@ document.getElementById("viewDataBtnM").addEventListener("click", () => {
   buildDataPanel(lastData);
   document.getElementById("dataPanel").classList.add("open");
 });
-// "Cargar Excel" usa <label for="fileInput"> — no necesita listener extra
 
 // Sincronizar filtro de mes móvil ↔ escritorio
 document.getElementById("monthFilterM").addEventListener("change", e => {
