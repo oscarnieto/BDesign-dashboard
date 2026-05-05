@@ -592,3 +592,30 @@ document.getElementById("dpClose").addEventListener("click", () => {
 document.addEventListener("keydown", e => {
   if (e.key === "Escape") document.getElementById("dataPanel").classList.remove("open");
 });
+
+// ── Burger menu (móvil) ───────────────────────────────────
+const burgerBtn = document.getElementById("burgerBtn");
+const burgerMenu = document.getElementById("burgerMenu");
+
+burgerBtn.addEventListener("click", e => {
+  e.stopPropagation();
+  burgerMenu.classList.toggle("open");
+});
+
+// Cerrar al hacer clic fuera
+document.addEventListener("click", () => burgerMenu.classList.remove("open"));
+burgerMenu.addEventListener("click", e => e.stopPropagation());
+
+// Acciones del menú móvil
+document.getElementById("exportBtnM").addEventListener("click", () => {
+  burgerMenu.classList.remove("open");
+  exportDashboard();
+});
+
+document.getElementById("viewDataBtnM").addEventListener("click", () => {
+  burgerMenu.classList.remove("open");
+  if (!lastData) return;
+  buildDataPanel(lastData);
+  document.getElementById("dataPanel").classList.add("open");
+});
+// "Cargar Excel" usa <label for="fileInput"> — no necesita listener extra
