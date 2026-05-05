@@ -68,7 +68,7 @@ function renderWithFilter() {
     render(lastData);
   } else {
     render(sliceData(lastData, ci));
-    document.getElementById("pb").textContent = lastData.tipologia.months[ci];
+    document.getElementById("pb").textContent = shortMonth(lastData.tipologia.months[ci]);
   }
 }
 
@@ -112,9 +112,19 @@ function sub(cur, prev, u = "") {
 function kill(id) {
   if (charts[id]) { charts[id].destroy(); delete charts[id]; }
 }
+const MONTH_ABBR = {
+  enero:'ENE',febrero:'FEB',marzo:'MAR',abril:'ABR',mayo:'MAY',junio:'JUN',
+  julio:'JUL',agosto:'AGO',septiembre:'SEP',octubre:'OCT',noviembre:'NOV',diciembre:'DIC'
+};
+function shortMonth(m) {
+  const [name, yr] = m.trim().split(/\s+/);
+  const abbr = MONTH_ABBR[name.toLowerCase()] || name.slice(0, 3).toUpperCase();
+  return yr ? abbr + " " + String(yr).slice(-2) : abbr;
+}
 function period(months) {
   if (!months || !months.length) return "";
-  return months.length === 1 ? months[0] : months[0] + " – " + months[months.length - 1];
+  const s = shortMonth(months[0]);
+  return months.length === 1 ? s : s + " – " + shortMonth(months[months.length - 1]);
 }
 
 function mergeResidencial(cats) {
