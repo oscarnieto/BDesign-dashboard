@@ -47,6 +47,7 @@ function sliceData(d, ci) {
     negVol:    { months: d.negVol.months.slice(0, ci + 1),    categories: sc(d.negVol.categories) },
     negHoras:  { months: d.negHoras.months.slice(0, ci + 1),  categories: sc(d.negHoras.categories) },
     ciudad:    { months: d.ciudad.months.slice(0, ci + 1),    categories: sc(d.ciudad.categories) },
+    freelance: d.freelance ? { months: d.freelance.months.slice(0, ci + 1), categories: sc(d.freelance.categories) } : null,
     entrega: {
       months: d.entrega.months.slice(0, ci + 1),
       values: evSlice,
@@ -241,10 +242,12 @@ function render(d) {
   document.getElementById("kv2").textContent = d.entrega.mediaYTD.toFixed(1) + " d";
   document.getElementById("ks2").innerHTML = sub(el, ep, " d");
 
-  // KPI 3 — Ciudades activas
-  const ac = d.ciudad.categories.filter(c => c.ytd > 0).length;
-  document.getElementById("kv3").textContent = ac;
-  document.getElementById("ks3").textContent = ac + " ciudades con actividad";
+  // KPI 3 — Trabajos externalizados
+  const fl = d.freelance ? d.freelance.categories.reduce((s, c) => s + c.ytd, 0) : 0;
+  const fll = d.freelance ? d.freelance.categories.reduce((s, c) => s + (c.monthly[lm] || 0), 0) : 0;
+  const flp = lm > 0 && d.freelance ? d.freelance.categories.reduce((s, c) => s + (c.monthly[lm - 1] || 0), 0) : null;
+  document.getElementById("kv3").textContent = fl.toLocaleString("es-ES");
+  document.getElementById("ks3").innerHTML = sub(fll, flp);
 
   // Fade-in KPIs
   [0, 1, 2, 3].forEach(i => {
@@ -391,9 +394,9 @@ function parseExcel(buf) {
   }
 
   const d = {};
-  ["Tipologia", "Negocio_Volumen", "Negocio_Horas", "Ciudad"].forEach(s => {
+  ["Tipologia", "Negocio_Volumen", "Negocio_Horas", "Ciudad", "Freelance"].forEach(s => {
     if (wb.Sheets[s]) {
-      const key = { Tipologia: "tipologia", Negocio_Volumen: "negVol", Negocio_Horas: "negHoras", Ciudad: "ciudad" }[s];
+      const key = { Tipologia: "tipologia", Negocio_Volumen: "negVol", Negocio_Horas: "negHoras", Ciudad: "ciudad", Freelance: "freelance" }[s];
       d[key] = parseSheet(wb.Sheets[s]);
     }
   });
