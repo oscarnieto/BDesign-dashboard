@@ -21,11 +21,15 @@ function hideError() {
 
 // ── Month filter ───────────────────────────────────────────
 function populateMonthFilter(months) {
-  const sel = document.getElementById("monthFilter");
-  sel.innerHTML = '<option value="-1">YTD completo</option>' +
+  const opts = '<option value="-1">YTD completo</option>' +
     months.map((m, i) => `<option value="${i}">${m}</option>`).join("");
+  const sel = document.getElementById("monthFilter");
+  sel.innerHTML = opts;
   sel.value = "-1";
   sel.style.display = "";
+  const selM = document.getElementById("monthFilterM");
+  selM.innerHTML = opts;
+  selM.value = "-1";
 }
 
 function sliceData(d, ci) {
@@ -619,3 +623,13 @@ document.getElementById("viewDataBtnM").addEventListener("click", () => {
   document.getElementById("dataPanel").classList.add("open");
 });
 // "Cargar Excel" usa <label for="fileInput"> — no necesita listener extra
+
+// Sincronizar filtro de mes móvil ↔ escritorio
+document.getElementById("monthFilterM").addEventListener("change", e => {
+  document.getElementById("monthFilter").value = e.target.value;
+  renderWithFilter();
+  burgerMenu.classList.remove("open");
+});
+document.getElementById("monthFilter").addEventListener("change", () => {
+  document.getElementById("monthFilterM").value = document.getElementById("monthFilter").value;
+});

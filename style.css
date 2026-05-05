@@ -237,7 +237,16 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
 .bm-item:hover{background:rgba(255,255,255,.08);color:var(--white)}
 .bm-separator{height:1px;background:var(--border);margin:4px 6px}
 
+.bm-select-wrap{cursor:default}
+.bm-select{
+  background:transparent;border:none;color:var(--gray2);
+  font-family:"Montserrat",sans-serif;font-size:13px;font-weight:600;
+  cursor:pointer;outline:none;flex:1;min-width:0;
+  appearance:none;-webkit-appearance:none;
+}
+.bm-select option{background:var(--card)}
+
 @media(max-width:640px){
   .burger-btn{display:flex}
-  .export-btn,.view-data-btn,.upload-btn{display:none!important}
+  .export-btn,.view-data-btn,.upload-btn,.month-filter{display:none!important}
 }
