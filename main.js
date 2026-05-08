@@ -442,33 +442,37 @@ async function fetchExcel() {
   );
 }
 
-// Auto-refresh
+// Auto-refresh controlado por refresh-mode.txt
 let autoRefreshInterval = null;
+let lastRefreshMode = null;
 
-function enableAutoRefresh(intervalMs = 15000) {
-  if (autoRefreshInterval) return;
-  document.getElementById("pb").style.opacity = "0.6";
-  document.getElementById("pb").style.animation = "pulse 1s infinite";
-  autoRefreshInterval = setInterval(() => fetchExcel(), intervalMs);
-  console.log(`Auto-refresh activado cada ${intervalMs / 1000}s`);
-}
-
-function disableAutoRefresh() {
-  if (autoRefreshInterval) {
-    clearInterval(autoRefreshInterval);
-    autoRefreshInterval = null;
+async function checkRefreshMode() {
+  try {
+    const res = await fetch("refresh-mode.txt?t=" + Date.now());
+    if (!res.ok) throw new Error();
+    const mode = (await res.text()).trim();
+    if (mode === "on" && !autoRefreshInterval) {
+      autoRefreshInterval = setInterval(fetchExcel, 15000);
+      document.getElementById("pb").style.animation = "pulse 1s infinite";
+      lastRefreshMode = "on";
+    } else if (mode !== "on" && autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+      autoRefreshInterval = null;
+      document.getElementById("pb").style.animation = "";
+      lastRefreshMode = null;
+    }
+  } catch (e) {
+    if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+      autoRefreshInterval = null;
+      document.getElementById("pb").style.animation = "";
+      lastRefreshMode = null;
+    }
   }
-  document.getElementById("pb").style.opacity = "1";
-  document.getElementById("pb").style.animation = "";
-  console.log("Auto-refresh desactivado");
 }
 
-// Activar auto-refresh si está en la URL (?refresh=15)
-const urlParams = new URLSearchParams(window.location.search);
-if (urlParams.has("refresh")) {
-  const ms = parseInt(urlParams.get("refresh")) * 1000 || 15000;
-  enableAutoRefresh(ms);
-}
+setInterval(checkRefreshMode, 1000);
+checkRefreshMode();
 
 // Re-render combo legend when crossing mobile breakpoint
 let wasMobile = isMobile();
