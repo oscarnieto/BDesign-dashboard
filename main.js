@@ -424,7 +424,7 @@ async function fetchExcel() {
   const errors = [];
   for (const name of ["datos.xlsx", "datos2.xlsx"]) {
     try {
-      const res = await fetch(name);
+      const res = await fetch(name + "?t=" + Date.now());
       if (!res.ok) { errors.push(`${name}: HTTP ${res.status}`); continue; }
       const buf = await res.arrayBuffer();
       lastData = parseExcel(buf);
@@ -440,6 +440,34 @@ async function fetchExcel() {
     "No se encontró ningún archivo de datos válido. " +
     (errors.length ? "(" + errors.join(" / ") + ")" : "")
   );
+}
+
+// Auto-refresh
+let autoRefreshInterval = null;
+
+function enableAutoRefresh(intervalMs = 15000) {
+  if (autoRefreshInterval) return;
+  document.getElementById("pb").style.opacity = "0.6";
+  document.getElementById("pb").style.animation = "pulse 1s infinite";
+  autoRefreshInterval = setInterval(() => fetchExcel(), intervalMs);
+  console.log(`Auto-refresh activado cada ${intervalMs / 1000}s`);
+}
+
+function disableAutoRefresh() {
+  if (autoRefreshInterval) {
+    clearInterval(autoRefreshInterval);
+    autoRefreshInterval = null;
+  }
+  document.getElementById("pb").style.opacity = "1";
+  document.getElementById("pb").style.animation = "";
+  console.log("Auto-refresh desactivado");
+}
+
+// Activar auto-refresh si está en la URL (?refresh=15)
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.has("refresh")) {
+  const ms = parseInt(urlParams.get("refresh")) * 1000 || 15000;
+  enableAutoRefresh(ms);
 }
 
 // Re-render combo legend when crossing mobile breakpoint

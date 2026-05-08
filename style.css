@@ -232,3 +232,8 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
   .burger-btn{display:flex}
   .export-btn,.view-data-btn,.month-filter{display:none!important}
 }
+
+@keyframes pulse{
+  0%,100%{opacity:1}
+  50%{opacity:0.5}
+}
