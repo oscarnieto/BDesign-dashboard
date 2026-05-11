@@ -222,6 +222,7 @@ function render(d, ci = -1) {
   document.getElementById("pb").textContent = period(d.tipologia.months);
   const lm = d.tipologia.months.length - 1;
   const isSingle = ci >= 0;
+  const setHtml = (id, val) => { const e = document.getElementById(id); if (e) e.innerHTML = val; };
 
   function yoySum(sheetKey) {
     if (!lastData2025 || !lastData2025[sheetKey]) return null;
@@ -236,7 +237,7 @@ function render(d, ci = -1) {
   const wp = lm > 0 ? d.tipologia.categories.reduce((s, c) => s + (c.monthly[lm - 1] || 0), 0) : null;
   document.getElementById("kv0").textContent = tw.toLocaleString("es-ES");
   document.getElementById("ks0").innerHTML = sub(wl, wp);
-  document.getElementById("ks0y").innerHTML = subYoY(tw, yoySum("tipologia"));
+  setHtml("ks0y", subYoY(tw, yoySum("tipologia")));
 
   // KPI 1 — Total horas
   const th = d.negHoras.categories.reduce((s, c) => s + c.ytd, 0);
@@ -244,7 +245,7 @@ function render(d, ci = -1) {
   const hp = lm > 0 ? d.negHoras.categories.reduce((s, c) => s + (c.monthly[lm - 1] || 0), 0) : null;
   document.getElementById("kv1").textContent = th.toLocaleString("es-ES");
   document.getElementById("ks1").innerHTML = sub(hl, hp, " h");
-  document.getElementById("ks1y").innerHTML = subYoY(th, yoySum("negHoras"));
+  setHtml("ks1y", subYoY(th, yoySum("negHoras")));
 
   // KPI 2 — Entrega
   const ev = d.entrega.values;
@@ -255,7 +256,7 @@ function render(d, ci = -1) {
     : null;
   document.getElementById("kv2").textContent = d.entrega.mediaYTD.toFixed(1) + " d";
   document.getElementById("ks2").innerHTML = sub(el, ep, " d");
-  document.getElementById("ks2y").innerHTML = subYoY(d.entrega.mediaYTD, em25, true);
+  setHtml("ks2y", subYoY(d.entrega.mediaYTD, em25, true));
 
   // KPI 3 — Trabajos externalizados
   const fl = d.freelance ? d.freelance.categories.reduce((s, c) => s + c.ytd, 0) : 0;
