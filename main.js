@@ -2,14 +2,15 @@ const Y = "#FFDE00";
 const N = ["#464a72","#4f547f","#585d8c","#616699","#6b709e","#7478a8","#7e82b1"];
 let charts = {};
 let lastData = null;
+let lastData2025 = null;
 
-// ── Tooltip global defaults (mejora móvil) ────────────────
+// ── Tooltip global defaults (mejora móvil) ────────────
 Chart.defaults.plugins.tooltip.position = 'nearest';
 Chart.defaults.plugins.tooltip.caretPadding = 8;
 Chart.defaults.plugins.tooltip.padding = 10;
 
 
-// ── Error display ──────────────────────────────────────────
+// ── Error display ──────────────────────────────
 function showError(msg) {
   document.getElementById("errorMsg").textContent = msg;
   document.getElementById("errorCard").classList.add("visible");
@@ -19,13 +20,17 @@ function hideError() {
   document.getElementById("errorCard").classList.remove("visible");
 }
 
-// ── Month filter ───────────────────────────────────────────
+// ── Month filter ─────────────────────────────────
 function populateMonthFilter(months) {
-  const sel = document.getElementById("monthFilter");
-  sel.innerHTML = '<option value="-1">YTD completo</option>' +
+  const opts = '<option value="-1">YTD completo</option>' +
     months.map((m, i) => `<option value="${i}">${m}</option>`).join("");
+  const sel = document.getElementById("monthFilter");
+  sel.innerHTML = opts;
   sel.value = "-1";
   sel.style.display = "";
+  const selM = document.getElementById("monthFilterM");
+  selM.innerHTML = opts;
+  selM.value = "-1";
 }
 
 function sliceData(d, ci) {
@@ -43,6 +48,7 @@ function sliceData(d, ci) {
     negVol:    { months: d.negVol.months.slice(0, ci + 1),    categories: sc(d.negVol.categories) },
     negHoras:  { months: d.negHoras.months.slice(0, ci + 1),  categories: sc(d.negHoras.categories) },
     ciudad:    { months: d.ciudad.months.slice(0, ci + 1),    categories: sc(d.ciudad.categories) },
+    freelance: d.freelance ? { months: d.freelance.months.slice(0, ci + 1), categories: sc(d.freelance.categories) } : null,
     entrega: {
       months: d.entrega.months.slice(0, ci + 1),
       values: evSlice,
@@ -61,34 +67,13 @@ function renderWithFilter() {
   if (!lastData) return;
   const ci = parseInt(document.getElementById("monthFilter").value);
   if (ci === -1) {
-    render(lastData);
+    render(lastData, -1);
   } else {
-    render(sliceData(lastData, ci));
-    document.getElementById("pb").textContent = lastData.tipologia.months[ci];
+    render(sliceData(lastData, ci), ci);
+    document.getElementById("pb").textContent = shortMonth(lastData.tipologia.months[ci]);
   }
 }
 
-// ── File upload ────────────────────────────────────────────
-function handleFile(file) {
-  if (!file) return;
-  if (!file.name.match(/\.xlsx?$/i)) {
-    showError("El archivo debe ser un Excel (.xlsx). Archivo recibido: " + file.name);
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      lastData = parseExcel(e.target.result);
-      hideError();
-      populateMonthFilter(lastData.tipologia.months);
-      document.getElementById("monthFilter").value = "-1";
-      render(lastData);
-    } catch (err) {
-      showError(err.message);
-    }
-  };
-  reader.readAsArrayBuffer(file);
-}
 
 function isMobile() { return window.innerWidth <= 640; }
 
@@ -105,12 +90,29 @@ function sub(cur, prev, u = "") {
   const cl = d > 0 ? "up" : "dn";
   return `<span class="${cl}">${d > 0 ? "▲" : "▼"} ${d > 0 ? "+" : ""}${Number.isInteger(d) ? d : d.toFixed(1)}${u}</span> vs mes anterior`;
 }
+function subYoY(v26, v25, lowerIsBetter = false) {
+  if (v25 === null || v25 === undefined || v25 === 0) return "";
+  const pct = Math.round((v26 - v25) / v25 * 100);
+  const isGood = lowerIsBetter ? pct <= 0 : pct >= 0;
+  const cls = isGood ? "up" : "dn";
+  return `<span class="${cls}">${pct >= 0 ? "+" : ""}${pct}% vs 2025</span>`;
+}
 function kill(id) {
   if (charts[id]) { charts[id].destroy(); delete charts[id]; }
 }
+const MONTH_ABBR = {
+  enero:'ENE',febrero:'FEB',marzo:'MAR',abril:'ABR',mayo:'MAY',junio:'JUN',
+  julio:'JUL',agosto:'AGO',septiembre:'SEP',octubre:'OCT',noviembre:'NOV',diciembre:'DIC'
+};
+function shortMonth(m) {
+  const [name, yr] = m.trim().split(/\s+/);
+  const abbr = MONTH_ABBR[name.toLowerCase()] || name.slice(0, 3).toUpperCase();
+  return yr ? abbr + " " + String(yr).slice(-2) : abbr;
+}
 function period(months) {
   if (!months || !months.length) return "";
-  return months.length === 1 ? months[0] : months[0] + " – " + months[months.length - 1];
+  const s = shortMonth(months[0]);
+  return months.length === 1 ? s : s + " – " + shortMonth(months[months.length - 1]);
 }
 
 function mergeResidencial(cats) {
@@ -137,6 +139,8 @@ function renderCombo(d, mob) {
   const wm = ml.map((_, i) => d.tipologia.categories.reduce((s, c) => s + (c.monthly[i] || 0), 0));
   const hm = ml.map((_, i) => d.negHoras.categories.reduce((s, c) => s + (c.monthly[i] || 0), 0));
   const mxi = wm.indexOf(Math.max(...wm));
+  const wm25 = lastData2025 ? ml.map((_, i) => lastData2025.tipologia.categories.reduce((s, c) => s + (c.monthly[i] || 0), 0)) : null;
+  const hm25 = lastData2025 ? ml.map((_, i) => lastData2025.negHoras.categories.reduce((s, c) => s + (c.monthly[i] || 0), 0)) : null;
   charts.combo = new Chart(document.getElementById("combo"), {
     type: "bar",
     data: {
@@ -152,7 +156,19 @@ function renderCombo(d, mob) {
           type: "bar", label: "Total trabajos", data: wm,
           backgroundColor: wm.map((_, i) => i === mxi ? Y : "#464a72"),
           borderRadius: 4, yAxisID: "y", order: 1
-        }
+        },
+        ...(wm25 ? [{
+          type: "line", label: "Trabajos 2025", data: wm25,
+          borderColor: "rgba(255,222,0,.45)", borderDash: [5, 4],
+          pointRadius: 3, pointBackgroundColor: "rgba(255,222,0,.45)",
+          tension: .35, fill: false, yAxisID: "y", order: 2
+        }] : []),
+        ...(hm25 ? [{
+          type: "line", label: "Horas 2025", data: hm25,
+          borderColor: "rgba(255,255,255,.3)", borderDash: [5, 4],
+          pointRadius: 3, pointBackgroundColor: "rgba(255,255,255,.3)",
+          tension: .35, fill: false, yAxisID: "y1", order: 0
+        }] : [])
       ]
     },
     options: {
@@ -174,7 +190,7 @@ function vBar(canvasId, data, suf) {
   kill(canvasId);
   const mob = isMobile();
   const s = sorted(mob ? data.slice(0, 5) : data);
-  const tot = sorted(data).reduce((a, c) => a + c.ytd, 0); // always full total for %
+  const tot = sorted(data).reduce((a, c) => a + c.ytd, 0);
   const c = cols(s.length);
   charts[canvasId] = new Chart(document.getElementById(canvasId), {
     type: "bar",
@@ -202,9 +218,18 @@ function vBar(canvasId, data, suf) {
   });
 }
 
-function render(d) {
+function render(d, ci = -1) {
   document.getElementById("pb").textContent = period(d.tipologia.months);
   const lm = d.tipologia.months.length - 1;
+  const isSingle = ci >= 0;
+  const setHtml = (id, val) => { const e = document.getElementById(id); if (e) e.innerHTML = val; };
+
+  function yoySum(sheetKey) {
+    if (!lastData2025 || !lastData2025[sheetKey]) return null;
+    const cats = lastData2025[sheetKey].categories;
+    if (isSingle) return cats.reduce((s, c) => s + (c.monthly[ci] || 0), 0);
+    return cats.reduce((s, c) => s + c.monthly.slice(0, lm + 1).reduce((a, b) => a + b, 0), 0);
+  }
 
   // KPI 0 — Total trabajos
   const tw = d.tipologia.categories.reduce((s, c) => s + c.ytd, 0);
@@ -212,6 +237,7 @@ function render(d) {
   const wp = lm > 0 ? d.tipologia.categories.reduce((s, c) => s + (c.monthly[lm - 1] || 0), 0) : null;
   document.getElementById("kv0").textContent = tw.toLocaleString("es-ES");
   document.getElementById("ks0").innerHTML = sub(wl, wp);
+  setHtml("ks0y", subYoY(tw, yoySum("tipologia")));
 
   // KPI 1 — Total horas
   const th = d.negHoras.categories.reduce((s, c) => s + c.ytd, 0);
@@ -219,18 +245,24 @@ function render(d) {
   const hp = lm > 0 ? d.negHoras.categories.reduce((s, c) => s + (c.monthly[lm - 1] || 0), 0) : null;
   document.getElementById("kv1").textContent = th.toLocaleString("es-ES");
   document.getElementById("ks1").innerHTML = sub(hl, hp, " h");
+  setHtml("ks1y", subYoY(th, yoySum("negHoras")));
 
   // KPI 2 — Entrega
   const ev = d.entrega.values;
   const el = ev.length > 0 ? ev[Math.min(lm, ev.length - 1)] : 0;
   const ep = lm > 0 && ev.length > 1 ? ev[Math.min(lm - 1, ev.length - 1)] : null;
+  const em25 = lastData2025 && lastData2025.entrega
+    ? (isSingle ? (lastData2025.entrega.values[ci] || null) : lastData2025.entrega.mediaYTD)
+    : null;
   document.getElementById("kv2").textContent = d.entrega.mediaYTD.toFixed(1) + " d";
   document.getElementById("ks2").innerHTML = sub(el, ep, " d");
+  setHtml("ks2y", subYoY(d.entrega.mediaYTD, em25, true));
 
-  // KPI 3 — Ciudades activas
-  const ac = d.ciudad.categories.filter(c => c.ytd > 0).length;
-  document.getElementById("kv3").textContent = ac;
-  document.getElementById("ks3").textContent = ac + " ciudades con actividad";
+  // KPI 3 — Trabajos externalizados
+  const fl = d.freelance ? d.freelance.categories.reduce((s, c) => s + c.ytd, 0) : 0;
+  const flPct = tw > 0 ? Math.round(fl / tw * 100) : 0;
+  document.getElementById("kv3").textContent = fl.toLocaleString("es-ES");
+  document.getElementById("ks3").textContent = flPct + "% del total de trabajos";
 
   // Fade-in KPIs
   [0, 1, 2, 3].forEach(i => {
@@ -239,7 +271,6 @@ function render(d) {
     setTimeout(() => e.classList.add("in"), 80 + i * 70);
   });
 
-  // Barras verticales — filtrar "Brand Design" de negHoras, fusionar Residencial, renombrar
   const tipologiaMerged   = mergeResidencial(renameCategories(d.tipologia.categories));
   const negVolMerged      = mergeResidencial(renameCategories(d.negVol.categories));
   const negHorasMerged    = mergeResidencial(
@@ -249,7 +280,6 @@ function render(d) {
   vBar("nc",  negVolMerged,     " trabajos");
   vBar("nhc", negHorasMerged,   " h");
 
-  // Ciudad — tarta
   kill("cc2");
   const cs = sorted(renameCategories(d.ciudad.categories));
   const cc = cols(cs.length);
@@ -273,10 +303,8 @@ function render(d) {
     `<div class="pie-li"><div class="pie-dot" style="background:${cc[i]}"></div><span class="pie-name">${c.name}</span><span class="pie-val">${c.ytd.toLocaleString("es-ES")}</span></div>`
   ).join("");
 
-  // Combo
   renderCombo(d, isMobile());
 
-  // RRSS
   document.getElementById("rv").textContent = d.rrss.volYTD.toLocaleString("es-ES");
   document.getElementById("rh").textContent = d.rrss.horYTD.toLocaleString("es-ES") + " h";
   function mb(id, vals, months) {
@@ -291,7 +319,6 @@ function render(d) {
   mb("rvb", d.rrss.volMon, d.rrss.months);
   mb("rhb", d.rrss.horMon, d.rrss.months);
 
-  // ── Ratio horas/trabajo por negocio ──
   kill("ratioChart");
   const negCommon = negVolMerged.filter(nv => {
     return negHorasMerged.find(nh => nh.name === nv.name);
@@ -319,7 +346,6 @@ function render(d) {
     }
   });
 
-  // ── Radar — volumen por negocio (normalizado) ──
   kill("radarChart");
   const radarCats = sorted(negVolMerged).slice(0, 6);
   const maxVol = Math.max(...radarCats.map(c => c.ytd));
@@ -377,14 +403,13 @@ function parseExcel(buf) {
   }
 
   const d = {};
-  ["Tipologia", "Negocio_Volumen", "Negocio_Horas", "Ciudad"].forEach(s => {
+  ["Tipologia", "Negocio_Volumen", "Negocio_Horas", "Ciudad", "Freelance"].forEach(s => {
     if (wb.Sheets[s]) {
-      const key = { Tipologia: "tipologia", Negocio_Volumen: "negVol", Negocio_Horas: "negHoras", Ciudad: "ciudad" }[s];
+      const key = { Tipologia: "tipologia", Negocio_Volumen: "negVol", Negocio_Horas: "negHoras", Ciudad: "ciudad", Freelance: "freelance" }[s];
       d[key] = parseSheet(wb.Sheets[s]);
     }
   });
 
-  // Entrega
   const er = wb.Sheets["Entrega"] ? XLSX.utils.sheet_to_json(wb.Sheets["Entrega"], { header: 1, defval: null }) : null;
   if (er) {
     const h = er[2], dv = er[3], mv = er[4];
@@ -401,7 +426,6 @@ function parseExcel(buf) {
     d.entrega = { months: [], values: [], mediaYTD: 0 };
   }
 
-  // RRSS
   const rr = wb.Sheets["RRSS"] ? XLSX.utils.sheet_to_json(wb.Sheets["RRSS"], { header: 1, defval: null }) : null;
   if (rr) {
     const h = rr[2], v = rr[3], hr = rr[4];
@@ -426,16 +450,21 @@ function parseExcel(buf) {
 }
 
 async function fetchExcel() {
+  try {
+    const res25 = await fetch("datos2025.xlsx?t=" + Date.now());
+    if (res25.ok) lastData2025 = parseExcel(await res25.arrayBuffer());
+  } catch (e) { lastData2025 = null; }
+
   const errors = [];
   for (const name of ["datos.xlsx", "datos2.xlsx"]) {
     try {
-      const res = await fetch(name);
+      const res = await fetch(name + "?t=" + Date.now());
       if (!res.ok) { errors.push(`${name}: HTTP ${res.status}`); continue; }
       const buf = await res.arrayBuffer();
       lastData = parseExcel(buf);
       hideError();
       populateMonthFilter(lastData.tipologia.months);
-      render(lastData);
+      render(lastData, -1);
       return;
     } catch (e) {
       errors.push(e.message || name);
@@ -443,12 +472,42 @@ async function fetchExcel() {
   }
   showError(
     "No se encontró ningún archivo de datos válido. " +
-    "Usa el botón «Cargar Excel» para subir tu archivo manualmente. " +
     (errors.length ? "(" + errors.join(" / ") + ")" : "")
   );
 }
 
-// Re-render combo legend when crossing mobile breakpoint
+// Auto-refresh controlado por refresh-mode.txt
+let autoRefreshInterval = null;
+let lastRefreshMode = null;
+
+async function checkRefreshMode() {
+  try {
+    const res = await fetch("refresh-mode.txt?t=" + Date.now());
+    if (!res.ok) throw new Error();
+    const mode = (await res.text()).trim();
+    if (mode === "on" && !autoRefreshInterval) {
+      autoRefreshInterval = setInterval(fetchExcel, 15000);
+      document.getElementById("pb").style.animation = "pulse 1s infinite";
+      lastRefreshMode = "on";
+    } else if (mode !== "on" && autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+      autoRefreshInterval = null;
+      document.getElementById("pb").style.animation = "";
+      lastRefreshMode = null;
+    }
+  } catch (e) {
+    if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+      autoRefreshInterval = null;
+      document.getElementById("pb").style.animation = "";
+      lastRefreshMode = null;
+    }
+  }
+}
+
+setInterval(checkRefreshMode, 1000);
+checkRefreshMode();
+
 let wasMobile = isMobile();
 window.addEventListener("resize", () => {
   const nowMobile = isMobile();
@@ -462,17 +521,12 @@ window.addEventListener("resize", () => {
 
 fetchExcel();
 
-// ── Month filter change ────────────────────────────────────
+// ── Month filter change ────────────────────────────
 document.getElementById("monthFilter").addEventListener("change", renderWithFilter);
 
-// ── File input ────────────────────────────────────────────
-document.getElementById("fileInput").addEventListener("change", e => {
-  handleFile(e.target.files[0]);
-  e.target.value = "";
-});
 
 
-// ── Tabla de datos ────────────────────────────────────────
+// ── Tabla de datos ──────────────────────────────
 function buildDataPanel(d) {
   const sections = [
     { key: "tipologia", label: "Tipología",       suffix: "trabajos" },
@@ -529,7 +583,7 @@ function buildDataPanel(d) {
   };
 }
 
-// ── Exportar PNG ──────────────────────────────────────────
+// ── Exportar PNG ────────────────────────────────
 async function exportDashboard() {
   const btn = document.getElementById("exportBtn");
   const originalHTML = btn.innerHTML;
@@ -555,32 +609,11 @@ async function exportDashboard() {
   btn.disabled = false;
 }
 
-// ── Drag & drop ───────────────────────────────────────────
-const overlay = document.getElementById("dropOverlay");
-let dragCounter = 0;
-document.addEventListener("dragenter", e => {
-  if (e.dataTransfer && e.dataTransfer.types.includes("Files")) {
-    dragCounter++;
-    overlay.classList.add("active");
-  }
-});
-document.addEventListener("dragleave", () => {
-  dragCounter--;
-  if (dragCounter <= 0) { dragCounter = 0; overlay.classList.remove("active"); }
-});
-document.addEventListener("dragover", e => e.preventDefault());
-document.addEventListener("drop", e => {
-  e.preventDefault();
-  dragCounter = 0;
-  overlay.classList.remove("active");
-  const file = e.dataTransfer && e.dataTransfer.files[0];
-  if (file) handleFile(file);
-});
 
-// ── Export button ─────────────────────────────────────────
+// ── Export button ─────────────────────────────────
 document.getElementById("exportBtn").addEventListener("click", exportDashboard);
 
-// ── View data button ──────────────────────────────────────
+// ── View data button ────────────────────────────
 document.getElementById("viewDataBtn").addEventListener("click", () => {
   if (!lastData) return;
   buildDataPanel(lastData);
@@ -591,4 +624,38 @@ document.getElementById("dpClose").addEventListener("click", () => {
 });
 document.addEventListener("keydown", e => {
   if (e.key === "Escape") document.getElementById("dataPanel").classList.remove("open");
+});
+
+// ── Burger menu (móvil) ───────────────────────────────
+const burgerBtn = document.getElementById("burgerBtn");
+const burgerMenu = document.getElementById("burgerMenu");
+
+burgerBtn.addEventListener("click", e => {
+  e.stopPropagation();
+  burgerMenu.classList.toggle("open");
+});
+
+document.addEventListener("click", () => burgerMenu.classList.remove("open"));
+burgerMenu.addEventListener("click", e => e.stopPropagation());
+
+document.getElementById("exportBtnM").addEventListener("click", () => {
+  burgerMenu.classList.remove("open");
+  exportDashboard();
+});
+
+document.getElementById("viewDataBtnM").addEventListener("click", () => {
+  burgerMenu.classList.remove("open");
+  if (!lastData) return;
+  buildDataPanel(lastData);
+  document.getElementById("dataPanel").classList.add("open");
+});
+
+// Sincronizar filtro de mes móvil ↔ escritorio
+document.getElementById("monthFilterM").addEventListener("change", e => {
+  document.getElementById("monthFilter").value = e.target.value;
+  renderWithFilter();
+  burgerMenu.classList.remove("open");
+});
+document.getElementById("monthFilter").addEventListener("change", () => {
+  document.getElementById("monthFilterM").value = document.getElementById("monthFilter").value;
 });
