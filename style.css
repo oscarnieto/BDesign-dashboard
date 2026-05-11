@@ -43,6 +43,16 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
 .kv{font-size:clamp(26px,3.5vw,44px);font-weight:800;color:var(--yellow);letter-spacing:-.02em;line-height:1;margin-bottom:6px}
 .ks{font-size:clamp(10px,1vw,12px);color:var(--gray2)}
 .ks .up{color:var(--green)}.ks .dn{color:var(--red)}
+.ks-yoy{font-size:clamp(9px,.9vw,11px);color:var(--gray);margin-top:3px}
+.ks-yoy .up{color:var(--green)}.ks-yoy .dn{color:var(--red)}
+.fl-months{display:flex;flex-direction:column;gap:3px;margin-top:8px}
+.fl-row{display:flex;justify-content:space-between;align-items:baseline;font-size:clamp(9px,.85vw,11px);color:var(--gray)}
+.fl-row .fl-mon{color:var(--gray)}
+.fl-row .fl-val{font-weight:700;color:var(--white)}
+.fl-row .fl-pct{color:var(--yellow);font-weight:600;margin-left:4px}
+.fl-row.fl-ytd{border-top:1px solid var(--border);margin-top:3px;padding-top:4px;color:var(--gray2)}
+.fl-row.fl-ytd .fl-val{color:var(--yellow)}
+.fl-row.fl-ytd .fl-mon{color:var(--gray2)}
 
 /* Chart grid */
 .g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:var(--gap)}
@@ -85,7 +95,7 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
 }
 
 /* Header right group */
-.header-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:nowrap;position:relative}
 
 /* Month filter */
 .month-filter{
@@ -98,33 +108,6 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
 }
 .month-filter option{background:#1a1e38}
 
-/* Upload button */
-.upload-btn{
-  display:flex;align-items:center;gap:6px;
-  background:rgba(255,255,255,.06);border:1px solid var(--border);
-  color:var(--gray2);font-family:"Montserrat",sans-serif;
-  font-size:clamp(10px,1.1vw,12px);font-weight:600;
-  padding:4px 12px;border-radius:20px;cursor:pointer;white-space:nowrap;
-  transition:background .2s,border-color .2s;
-}
-.upload-btn:hover{background:rgba(255,255,255,.11);border-color:rgba(255,255,255,.18)}
-.upload-btn input[type=file]{display:none}
-@media(max-width:480px){.upload-btn span{display:none}}
-
-/* Drop overlay */
-.drop-overlay{
-  position:fixed;inset:0;background:rgba(18,21,42,.93);z-index:500;
-  display:none;align-items:center;justify-content:center;
-  backdrop-filter:blur(4px);
-}
-.drop-overlay.active{display:flex}
-.drop-box{
-  border:2px dashed var(--yellow);border-radius:16px;
-  padding:clamp(32px,5vw,64px) clamp(40px,8vw,96px);
-  text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;
-}
-.drop-box p{font-size:clamp(16px,2.2vw,22px);font-weight:700;color:var(--white)}
-.drop-sub{font-size:clamp(11px,1.2vw,13px)!important;color:var(--gray)!important;font-weight:400!important}
 
 /* Error card */
 .error-card{
@@ -147,7 +130,6 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
 }
 .export-btn:hover{background:rgba(255,255,255,.11);border-color:rgba(255,255,255,.18)}
 .export-btn:disabled{opacity:.5;cursor:not-allowed}
-@media(max-width:480px){.export-btn span{display:none}}
 
 /* View data button */
 .view-data-btn{
@@ -159,7 +141,6 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
   transition:background .2s,border-color .2s;
 }
 .view-data-btn:hover{background:rgba(255,255,255,.11);border-color:rgba(255,255,255,.18)}
-@media(max-width:600px){.view-data-btn span{display:none}}
 
 /* Data panel */
 .data-panel{
@@ -210,3 +191,51 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
 .dp-table tr:hover td{background:rgba(255,255,255,.03)}
 .dp-table .ytd-col{color:var(--yellow)!important;font-weight:700}
 .dp-table tfoot td{font-weight:700;color:var(--yellow);border-top:1px solid var(--border);border-bottom:none;background:rgba(255,222,0,.04)}
+
+/* ── Burger menu ─────────────────────────────────────────── */
+.burger-btn{
+  display:none;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.06);border:1px solid var(--border);
+  color:var(--gray2);border-radius:20px;padding:5px 10px;
+  cursor:pointer;transition:background .2s,border-color .2s;flex-shrink:0;
+}
+.burger-btn:hover{background:rgba(255,255,255,.11);border-color:rgba(255,255,255,.18)}
+
+.burger-menu{
+  position:absolute;top:calc(100% + 10px);right:0;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);padding:6px;min-width:200px;
+  display:none;flex-direction:column;gap:2px;
+  z-index:200;box-shadow:0 8px 32px rgba(0,0,0,.5);
+}
+.burger-menu.open{display:flex}
+
+.bm-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;border-radius:calc(var(--r) - 2px);
+  color:var(--gray2);font-family:"Montserrat",sans-serif;
+  font-size:13px;font-weight:600;cursor:pointer;
+  background:none;border:none;text-align:left;width:100%;
+  transition:background .15s,color .15s;
+}
+.bm-item:hover{background:rgba(255,255,255,.08);color:var(--white)}
+.bm-separator{height:1px;background:var(--border);margin:4px 6px}
+
+.bm-select-wrap{cursor:default}
+.bm-select{
+  background:transparent;border:none;color:var(--gray2);
+  font-family:"Montserrat",sans-serif;font-size:13px;font-weight:600;
+  cursor:pointer;outline:none;flex:1;min-width:0;
+  appearance:none;-webkit-appearance:none;
+}
+.bm-select option{background:var(--card)}
+
+@media(max-width:640px){
+  .burger-btn{display:flex}
+  .export-btn,.view-data-btn,.month-filter{display:none!important}
+}
+
+@keyframes pulse{
+  0%,100%{opacity:1}
+  50%{opacity:0.5}
+}
