@@ -2,14 +2,15 @@ const Y = "#FFDE00";
 const N = ["#464a72","#4f547f","#585d8c","#616699","#6b709e","#7478a8","#7e82b1"];
 let charts = {};
 let lastData = null;
+let lastData2025 = null;
 
-// ── Tooltip global defaults (mejora móvil) ────────────────
+// ── Tooltip global defaults (mejora móvil) ────────────
 Chart.defaults.plugins.tooltip.position = 'nearest';
 Chart.defaults.plugins.tooltip.caretPadding = 8;
 Chart.defaults.plugins.tooltip.padding = 10;
 
 
-// ── Error display ──────────────────────────────────────────
+// ── Error display ──────────────────────────────
 function showError(msg) {
   document.getElementById("errorMsg").textContent = msg;
   document.getElementById("errorCard").classList.add("visible");
@@ -19,7 +20,7 @@ function hideError() {
   document.getElementById("errorCard").classList.remove("visible");
 }
 
-// ── Month filter ───────────────────────────────────────────
+// ── Month filter ─────────────────────────────────
 function populateMonthFilter(months) {
   const opts = '<option value="-1">YTD completo</option>' +
     months.map((m, i) => `<option value="${i}">${m}</option>`).join("");
@@ -66,9 +67,9 @@ function renderWithFilter() {
   if (!lastData) return;
   const ci = parseInt(document.getElementById("monthFilter").value);
   if (ci === -1) {
-    render(lastData);
+    render(lastData, -1);
   } else {
-    render(sliceData(lastData, ci));
+    render(sliceData(lastData, ci), ci);
     document.getElementById("pb").textContent = shortMonth(lastData.tipologia.months[ci]);
   }
 }
@@ -88,6 +89,13 @@ function sub(cur, prev, u = "") {
   if (d === 0) return "Sin cambios";
   const cl = d > 0 ? "up" : "dn";
   return `<span class="${cl}">${d > 0 ? "▲" : "▼"} ${d > 0 ? "+" : ""}${Number.isInteger(d) ? d : d.toFixed(1)}${u}</span> vs mes anterior`;
+}
+function subYoY(v26, v25, lowerIsBetter = false) {
+  if (v25 === null || v25 === undefined || v25 === 0) return "";
+  const pct = Math.round((v26 - v25) / v25 * 100);
+  const isGood = lowerIsBetter ? pct <= 0 : pct >= 0;
+  const cls = isGood ? "up" : "dn";
+  return `<span class="${cls}">${pct >= 0 ? "+" : ""}${pct}% vs 2025</span>`;
 }
 function kill(id) {
   if (charts[id]) { charts[id].destroy(); delete charts[id]; }
@@ -131,6 +139,8 @@ function renderCombo(d, mob) {
   const wm = ml.map((_, i) => d.tipologia.categories.reduce((s, c) => s + (c.monthly[i] || 0), 0));
   const hm = ml.map((_, i) => d.negHoras.categories.reduce((s, c) => s + (c.monthly[i] || 0), 0));
   const mxi = wm.indexOf(Math.max(...wm));
+  const wm25 = lastData2025 ? ml.map((_, i) => lastData2025.tipologia.categories.reduce((s, c) => s + (c.monthly[i] || 0), 0)) : null;
+  const hm25 = lastData2025 ? ml.map((_, i) => lastData2025.negHoras.categories.reduce((s, c) => s + (c.monthly[i] || 0), 0)) : null;
   charts.combo = new Chart(document.getElementById("combo"), {
     type: "bar",
     data: {
@@ -146,7 +156,19 @@ function renderCombo(d, mob) {
           type: "bar", label: "Total trabajos", data: wm,
           backgroundColor: wm.map((_, i) => i === mxi ? Y : "#464a72"),
           borderRadius: 4, yAxisID: "y", order: 1
-        }
+        },
+        ...(wm25 ? [{
+          type: "line", label: "Trabajos 2025", data: wm25,
+          borderColor: "rgba(255,222,0,.45)", borderDash: [5, 4],
+          pointRadius: 3, pointBackgroundColor: "rgba(255,222,0,.45)",
+          tension: .35, fill: false, yAxisID: "y", order: 2
+        }] : []),
+        ...(hm25 ? [{
+          type: "line", label: "Horas 2025", data: hm25,
+          borderColor: "rgba(255,255,255,.3)", borderDash: [5, 4],
+          pointRadius: 3, pointBackgroundColor: "rgba(255,255,255,.3)",
+          tension: .35, fill: false, yAxisID: "y1", order: 0
+        }] : [])
       ]
     },
     options: {
@@ -168,7 +190,7 @@ function vBar(canvasId, data, suf) {
   kill(canvasId);
   const mob = isMobile();
   const s = sorted(mob ? data.slice(0, 5) : data);
-  const tot = sorted(data).reduce((a, c) => a + c.ytd, 0); // always full total for %
+  const tot = sorted(data).reduce((a, c) => a + c.ytd, 0);
   const c = cols(s.length);
   charts[canvasId] = new Chart(document.getElementById(canvasId), {
     type: "bar",
@@ -196,9 +218,17 @@ function vBar(canvasId, data, suf) {
   });
 }
 
-function render(d) {
+function render(d, ci = -1) {
   document.getElementById("pb").textContent = period(d.tipologia.months);
   const lm = d.tipologia.months.length - 1;
+  const isSingle = ci >= 0;
+
+  function yoySum(sheetKey) {
+    if (!lastData2025 || !lastData2025[sheetKey]) return null;
+    const cats = lastData2025[sheetKey].categories;
+    if (isSingle) return cats.reduce((s, c) => s + (c.monthly[ci] || 0), 0);
+    return cats.reduce((s, c) => s + c.monthly.slice(0, lm + 1).reduce((a, b) => a + b, 0), 0);
+  }
 
   // KPI 0 — Total trabajos
   const tw = d.tipologia.categories.reduce((s, c) => s + c.ytd, 0);
@@ -206,6 +236,7 @@ function render(d) {
   const wp = lm > 0 ? d.tipologia.categories.reduce((s, c) => s + (c.monthly[lm - 1] || 0), 0) : null;
   document.getElementById("kv0").textContent = tw.toLocaleString("es-ES");
   document.getElementById("ks0").innerHTML = sub(wl, wp);
+  document.getElementById("ks0y").innerHTML = subYoY(tw, yoySum("tipologia"));
 
   // KPI 1 — Total horas
   const th = d.negHoras.categories.reduce((s, c) => s + c.ytd, 0);
@@ -213,13 +244,18 @@ function render(d) {
   const hp = lm > 0 ? d.negHoras.categories.reduce((s, c) => s + (c.monthly[lm - 1] || 0), 0) : null;
   document.getElementById("kv1").textContent = th.toLocaleString("es-ES");
   document.getElementById("ks1").innerHTML = sub(hl, hp, " h");
+  document.getElementById("ks1y").innerHTML = subYoY(th, yoySum("negHoras"));
 
   // KPI 2 — Entrega
   const ev = d.entrega.values;
   const el = ev.length > 0 ? ev[Math.min(lm, ev.length - 1)] : 0;
   const ep = lm > 0 && ev.length > 1 ? ev[Math.min(lm - 1, ev.length - 1)] : null;
+  const em25 = lastData2025 && lastData2025.entrega
+    ? (isSingle ? (lastData2025.entrega.values[ci] || null) : lastData2025.entrega.mediaYTD)
+    : null;
   document.getElementById("kv2").textContent = d.entrega.mediaYTD.toFixed(1) + " d";
   document.getElementById("ks2").innerHTML = sub(el, ep, " d");
+  document.getElementById("ks2y").innerHTML = subYoY(d.entrega.mediaYTD, em25, true);
 
   // KPI 3 — Trabajos externalizados
   const fl = d.freelance ? d.freelance.categories.reduce((s, c) => s + c.ytd, 0) : 0;
@@ -234,7 +270,6 @@ function render(d) {
     setTimeout(() => e.classList.add("in"), 80 + i * 70);
   });
 
-  // Barras verticales — filtrar "Brand Design" de negHoras, fusionar Residencial, renombrar
   const tipologiaMerged   = mergeResidencial(renameCategories(d.tipologia.categories));
   const negVolMerged      = mergeResidencial(renameCategories(d.negVol.categories));
   const negHorasMerged    = mergeResidencial(
@@ -244,7 +279,6 @@ function render(d) {
   vBar("nc",  negVolMerged,     " trabajos");
   vBar("nhc", negHorasMerged,   " h");
 
-  // Ciudad — tarta
   kill("cc2");
   const cs = sorted(renameCategories(d.ciudad.categories));
   const cc = cols(cs.length);
@@ -268,10 +302,8 @@ function render(d) {
     `<div class="pie-li"><div class="pie-dot" style="background:${cc[i]}"></div><span class="pie-name">${c.name}</span><span class="pie-val">${c.ytd.toLocaleString("es-ES")}</span></div>`
   ).join("");
 
-  // Combo
   renderCombo(d, isMobile());
 
-  // RRSS
   document.getElementById("rv").textContent = d.rrss.volYTD.toLocaleString("es-ES");
   document.getElementById("rh").textContent = d.rrss.horYTD.toLocaleString("es-ES") + " h";
   function mb(id, vals, months) {
@@ -286,7 +318,6 @@ function render(d) {
   mb("rvb", d.rrss.volMon, d.rrss.months);
   mb("rhb", d.rrss.horMon, d.rrss.months);
 
-  // ── Ratio horas/trabajo por negocio ──
   kill("ratioChart");
   const negCommon = negVolMerged.filter(nv => {
     return negHorasMerged.find(nh => nh.name === nv.name);
@@ -314,7 +345,6 @@ function render(d) {
     }
   });
 
-  // ── Radar — volumen por negocio (normalizado) ──
   kill("radarChart");
   const radarCats = sorted(negVolMerged).slice(0, 6);
   const maxVol = Math.max(...radarCats.map(c => c.ytd));
@@ -379,7 +409,6 @@ function parseExcel(buf) {
     }
   });
 
-  // Entrega
   const er = wb.Sheets["Entrega"] ? XLSX.utils.sheet_to_json(wb.Sheets["Entrega"], { header: 1, defval: null }) : null;
   if (er) {
     const h = er[2], dv = er[3], mv = er[4];
@@ -396,7 +425,6 @@ function parseExcel(buf) {
     d.entrega = { months: [], values: [], mediaYTD: 0 };
   }
 
-  // RRSS
   const rr = wb.Sheets["RRSS"] ? XLSX.utils.sheet_to_json(wb.Sheets["RRSS"], { header: 1, defval: null }) : null;
   if (rr) {
     const h = rr[2], v = rr[3], hr = rr[4];
@@ -421,6 +449,11 @@ function parseExcel(buf) {
 }
 
 async function fetchExcel() {
+  try {
+    const res25 = await fetch("datos2025.xlsx?t=" + Date.now());
+    if (res25.ok) lastData2025 = parseExcel(await res25.arrayBuffer());
+  } catch (e) { lastData2025 = null; }
+
   const errors = [];
   for (const name of ["datos.xlsx", "datos2.xlsx"]) {
     try {
@@ -430,7 +463,7 @@ async function fetchExcel() {
       lastData = parseExcel(buf);
       hideError();
       populateMonthFilter(lastData.tipologia.months);
-      render(lastData);
+      render(lastData, -1);
       return;
     } catch (e) {
       errors.push(e.message || name);
@@ -474,7 +507,6 @@ async function checkRefreshMode() {
 setInterval(checkRefreshMode, 1000);
 checkRefreshMode();
 
-// Re-render combo legend when crossing mobile breakpoint
 let wasMobile = isMobile();
 window.addEventListener("resize", () => {
   const nowMobile = isMobile();
@@ -488,12 +520,12 @@ window.addEventListener("resize", () => {
 
 fetchExcel();
 
-// ── Month filter change ────────────────────────────────────
+// ── Month filter change ────────────────────────────
 document.getElementById("monthFilter").addEventListener("change", renderWithFilter);
 
 
 
-// ── Tabla de datos ────────────────────────────────────────
+// ── Tabla de datos ──────────────────────────────
 function buildDataPanel(d) {
   const sections = [
     { key: "tipologia", label: "Tipología",       suffix: "trabajos" },
@@ -550,7 +582,7 @@ function buildDataPanel(d) {
   };
 }
 
-// ── Exportar PNG ──────────────────────────────────────────
+// ── Exportar PNG ────────────────────────────────
 async function exportDashboard() {
   const btn = document.getElementById("exportBtn");
   const originalHTML = btn.innerHTML;
@@ -577,10 +609,10 @@ async function exportDashboard() {
 }
 
 
-// ── Export button ─────────────────────────────────────────
+// ── Export button ─────────────────────────────────
 document.getElementById("exportBtn").addEventListener("click", exportDashboard);
 
-// ── View data button ──────────────────────────────────────
+// ── View data button ────────────────────────────
 document.getElementById("viewDataBtn").addEventListener("click", () => {
   if (!lastData) return;
   buildDataPanel(lastData);
@@ -593,7 +625,7 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape") document.getElementById("dataPanel").classList.remove("open");
 });
 
-// ── Burger menu (móvil) ───────────────────────────────────
+// ── Burger menu (móvil) ───────────────────────────────
 const burgerBtn = document.getElementById("burgerBtn");
 const burgerMenu = document.getElementById("burgerMenu");
 
@@ -602,11 +634,9 @@ burgerBtn.addEventListener("click", e => {
   burgerMenu.classList.toggle("open");
 });
 
-// Cerrar al hacer clic fuera
 document.addEventListener("click", () => burgerMenu.classList.remove("open"));
 burgerMenu.addEventListener("click", e => e.stopPropagation());
 
-// Acciones del menú móvil
 document.getElementById("exportBtnM").addEventListener("click", () => {
   burgerMenu.classList.remove("open");
   exportDashboard();
