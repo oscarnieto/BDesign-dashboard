@@ -43,6 +43,8 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
 .kv{font-size:clamp(26px,3.5vw,44px);font-weight:800;color:var(--yellow);letter-spacing:-.02em;line-height:1;margin-bottom:6px}
 .ks{font-size:clamp(10px,1vw,12px);color:var(--gray2)}
 .ks .up{color:var(--green)}.ks .dn{color:var(--red)}
+.ks-yoy{font-size:clamp(9px,.9vw,11px);color:var(--gray);margin-top:3px}
+.ks-yoy .up{color:var(--green)}.ks-yoy .dn{color:var(--red)}
 .fl-months{display:flex;flex-direction:column;gap:3px;margin-top:8px}
 .fl-row{display:flex;justify-content:space-between;align-items:baseline;font-size:clamp(9px,.85vw,11px);color:var(--gray)}
 .fl-row .fl-mon{color:var(--gray)}
