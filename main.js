@@ -476,38 +476,6 @@ async function fetchExcel() {
   );
 }
 
-// Auto-refresh controlado por refresh-mode.txt
-let autoRefreshInterval = null;
-let lastRefreshMode = null;
-
-async function checkRefreshMode() {
-  try {
-    const res = await fetch("refresh-mode.txt?t=" + Date.now());
-    if (!res.ok) throw new Error();
-    const mode = (await res.text()).trim();
-    if (mode === "on" && !autoRefreshInterval) {
-      autoRefreshInterval = setInterval(fetchExcel, 15000);
-      document.getElementById("pb").style.animation = "pulse 1s infinite";
-      lastRefreshMode = "on";
-    } else if (mode !== "on" && autoRefreshInterval) {
-      clearInterval(autoRefreshInterval);
-      autoRefreshInterval = null;
-      document.getElementById("pb").style.animation = "";
-      lastRefreshMode = null;
-    }
-  } catch (e) {
-    if (autoRefreshInterval) {
-      clearInterval(autoRefreshInterval);
-      autoRefreshInterval = null;
-      document.getElementById("pb").style.animation = "";
-      lastRefreshMode = null;
-    }
-  }
-}
-
-setInterval(checkRefreshMode, 1000);
-checkRefreshMode();
-
 let wasMobile = isMobile();
 window.addEventListener("resize", () => {
   const nowMobile = isMobile();
