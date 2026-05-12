@@ -31,16 +31,26 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
 .sec::after{content:"";flex:1;height:1px;background:var(--border)}
 
 /* KPIs */
-.kg{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:var(--gap)}
+.kg{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:var(--gap)}
 .kc{
-  background:var(--card);border:1px solid var(--border);border-radius:var(--r);
-  padding:var(--pad);position:relative;overflow:hidden;
-  opacity:0;transform:translateY(16px);transition:opacity .45s ease,transform .45s ease;
+  background:linear-gradient(155deg,#1d2142 0%,#161930 100%);
+  border:none;
+  border-radius:clamp(18px,2.2vw,26px);
+  padding:clamp(20px,2.6vw,32px);
+  position:relative;overflow:hidden;
+  box-shadow:0 4px 24px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.04);
+  opacity:0;transform:translateY(16px);transition:opacity .45s ease,transform .45s ease,box-shadow .25s ease;
 }
+.kc:hover{box-shadow:0 8px 32px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06)}
 .kc.in{opacity:1;transform:none}
-.kc::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--yellow),transparent)}
-.kl{font-size:clamp(9px,.9vw,11px);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--gray);margin-bottom:6px}
-.kv{font-size:clamp(26px,3.5vw,44px);font-weight:800;color:var(--yellow);letter-spacing:-.02em;line-height:1;margin-bottom:6px}
+.kc::before{
+  content:"";position:absolute;top:-40%;right:-20%;
+  width:160px;height:160px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,222,0,.12) 0%,transparent 70%);
+  pointer-events:none;
+}
+.kl{font-size:clamp(10px,.95vw,12px);font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--gray);margin-bottom:14px}
+.kv{font-size:clamp(32px,4.5vw,58px);font-weight:800;color:var(--yellow);letter-spacing:-.03em;line-height:1;margin-bottom:10px;text-shadow:0 0 30px rgba(255,222,0,.15)}
 .ks{font-size:clamp(10px,1vw,12px);color:var(--gray2)}
 .ks .up{color:var(--green)}.ks .dn{color:var(--red)}
 .ks-yoy{font-size:clamp(9px,.9vw,11px);color:var(--gray);margin-top:3px}
