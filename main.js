@@ -364,7 +364,10 @@ function render(d, ci = -1) {
   document.getElementById("pb").textContent = period(d.tipologia.months);
   const lm = d.tipologia.months.length - 1;
   const isSingle = ci >= 0;
+  const periodLbl = isSingle ? d.tipologia.months[lm] : "YTD";
   const setHtml = (id, val) => { const e = document.getElementById(id); if (e) e.innerHTML = val; };
+  document.querySelector("#k0 .kl").textContent = "Total trabajos " + periodLbl;
+  document.querySelector("#k1 .kl").textContent = "Total horas " + periodLbl;
 
   function yoySum(sheetKey) {
     if (!lastData2025 || !lastData2025[sheetKey]) return null;
