@@ -189,7 +189,7 @@ function renderCombo(d, mob) {
 function vBar(canvasId, data, suf, onClickFn) {
   kill(canvasId);
   const mob = isMobile();
-  const s = sorted(mob ? data.slice(0, 5) : data);
+  const s = mob ? sorted(data).slice(0, 5) : sorted(data);
   const tot = sorted(data).reduce((a, c) => a + c.ytd, 0);
   const c = cols(s.length);
   charts[canvasId] = new Chart(document.getElementById(canvasId), {
