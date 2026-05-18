@@ -275,9 +275,13 @@ function openNegModal(catName) {
     const nh25 = mergeResidencial(renameCategories(lastData2025.negHoras.categories.filter(c => c.name.trim().toLowerCase() !== "brand design")));
     const vol25 = nv25.find(c => c.name === catName);
     const hor25 = nh25.find(c => c.name === catName);
+    const nMo = lastData.negVol.months.length;
+    const sum25 = (cat) => cat ? cat.monthly.slice(0, nMo).reduce((a, b) => a + b, 0) : 0;
+    const vol25ytd = sum25(vol25);
+    const hor25ytd = hor25 ? sum25(hor25) : 0;
     const rows = [];
-    if (vol25) rows.push({ lbl: `Trabajos 2025: ${vol25.ytd.toLocaleString("es-ES")}`, v26: vol.ytd, v25: vol25.ytd });
-    if (hor && hor25) rows.push({ lbl: `Horas 2025: ${Math.round(hor25.ytd).toLocaleString("es-ES")} h`, v26: hor.ytd, v25: hor25.ytd });
+    if (vol25) rows.push({ lbl: `Trabajos 2025: ${vol25ytd.toLocaleString("es-ES")}`, v26: vol.ytd, v25: vol25ytd });
+    if (hor && hor25) rows.push({ lbl: `Horas 2025: ${Math.round(hor25ytd).toLocaleString("es-ES")} h`, v26: hor.ytd, v25: hor25ytd });
     if (rows.length) {
       yoyEl.innerHTML = rows.map(r =>
         `<div class="nm-yoy-row"><span class="nm-yoy-lbl">${r.lbl}</span>${subYoY(r.v26, r.v25)}</div>`
