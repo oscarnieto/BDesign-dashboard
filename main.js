@@ -297,6 +297,54 @@ function openNegModal(catName) {
   document.getElementById("negModal").classList.add("open");
 }
 
+function openCiuModal(catName) {
+  if (!lastData) return;
+  const cats = renameCategories(lastData.ciudad.categories);
+  const city = cats.find(c => c.name === catName);
+  if (!city) return;
+  const total = cats.reduce((s, c) => s + c.ytd, 0);
+  const pct   = total > 0 ? Math.round(city.ytd / total * 100) : 0;
+
+  document.getElementById("nmTitle").textContent = catName;
+  document.getElementById("nmKpis").innerHTML = [
+    { val: city.ytd.toLocaleString("es-ES"), lbl: "Trabajos YTD" },
+    { val: pct + "%", lbl: "% del total" }
+  ].map(k => `<div class="nm-kpi"><div class="nmk-val">${k.val}</div><div class="nmk-lbl">${k.lbl}</div></div>`).join("");
+
+  function miniBar(containerId, months, monthly, color) {
+    const max = Math.max(...monthly.map(v => v || 0), 1);
+    document.getElementById(containerId).innerHTML = months.map((m, i) => {
+      const v = monthly[i] || 0;
+      return `<div class="nm-bar-row">
+        <div class="nm-bar-name">${shortMonth(m)}</div>
+        <div class="nm-bar-track"><div class="nm-bar-fill" style="width:${v/max*100}%;background:${color}"></div></div>
+        <div class="nm-bar-val">${v.toLocaleString("es-ES")}</div>
+      </div>`;
+    }).join("");
+  }
+  document.querySelector("#nmVolBars").previousElementSibling.textContent = "Evolución mensual — Trabajos";
+  miniBar("nmVolBars", lastData.ciudad.months, city.monthly, "var(--yellow)");
+  document.getElementById("nmHorSection").style.display = "none";
+
+  const yoyEl = document.getElementById("nmYoY");
+  if (lastData2025 && lastData2025.ciudad) {
+    const cats25 = renameCategories(lastData2025.ciudad.categories);
+    const city25 = cats25.find(c => c.name === catName);
+    if (city25) {
+      const nMo = lastData.ciudad.months.length;
+      const city25ytd = city25.monthly.slice(0, nMo).reduce((a, b) => a + b, 0);
+      yoyEl.innerHTML = `<div class="nm-yoy-row"><span class="nm-yoy-lbl">Trabajos 2025: ${city25ytd.toLocaleString("es-ES")}</span>${subYoY(city.ytd, city25ytd)}</div>`;
+      yoyEl.style.display = "";
+    } else {
+      yoyEl.style.display = "none";
+    }
+  } else {
+    yoyEl.style.display = "none";
+  }
+
+  document.getElementById("negModal").classList.add("open");
+}
+
 function render(d, ci = -1) {
   document.getElementById("pb").textContent = period(d.tipologia.months);
   const lm = d.tipologia.months.length - 1;
@@ -357,7 +405,7 @@ function render(d, ci = -1) {
   );
   vBar("tc",  tipologiaMerged,  " trabajos");
   vBar("nc",  negVolMerged,     " trabajos", (cat) => openNegModal(cat.name));
-  vBar("nhc", negHorasMerged,   " h");
+  vBar("nhc", negHorasMerged,   " h", (cat) => openNegModal(cat.name));
 
   kill("cc2");
   const cs = sorted(renameCategories(d.ciudad.categories));
@@ -372,14 +420,16 @@ function render(d, ci = -1) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      onClick: (evt, els) => { if (els.length) openCiuModal(cs[els[0].index].name); },
       plugins: {
         legend: { display: false },
         tooltip: { callbacks: { label: ctx => " " + ctx.parsed.toLocaleString("es-ES") + " (" + Math.round(ctx.parsed / ctot * 100) + "%)" } }
       }
     }
   });
+  document.getElementById("cc2").style.cursor = "pointer";
   document.getElementById("cc2leg").innerHTML = cs.map((c, i) =>
-    `<div class="pie-li"><div class="pie-dot" style="background:${cc[i]}"></div><span class="pie-name">${c.name}</span><span class="pie-val">${c.ytd.toLocaleString("es-ES")}</span></div>`
+    `<div class="pie-li" style="cursor:pointer" onclick="openCiuModal('${c.name.replace(/'/g, "\\'")}')"><div class="pie-dot" style="background:${cc[i]}"></div><span class="pie-name">${c.name}</span><span class="pie-val">${c.ytd.toLocaleString("es-ES")}</span></div>`
   ).join("");
 
   renderCombo(d, isMobile());
