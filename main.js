@@ -3,6 +3,8 @@ const N = ["#464a72","#4f547f","#585d8c","#616699","#6b709e","#7478a8","#7e82b1"
 let charts = {};
 let lastData = null;
 let lastData2025 = null;
+let currentRenderData = null;
+let currentCi = -1;
 
 // ── Tooltip global defaults (mejora móvil) ────────────
 Chart.defaults.plugins.tooltip.position = 'nearest';
@@ -221,9 +223,12 @@ function vBar(canvasId, data, suf, onClickFn) {
 }
 
 function openNegModal(catName) {
-  if (!lastData) return;
-  const negVolAll  = mergeResidencial(renameCategories(lastData.negVol.categories));
-  const negHorAll  = mergeResidencial(renameCategories(lastData.negHoras.categories.filter(c => c.name.trim().toLowerCase() !== "brand design")));
+  if (!currentRenderData) return;
+  const d = currentRenderData;
+  const ci = currentCi;
+  const isSingle = ci >= 0;
+  const negVolAll = mergeResidencial(renameCategories(d.negVol.categories));
+  const negHorAll = mergeResidencial(renameCategories(d.negHoras.categories.filter(c => c.name.trim().toLowerCase() !== "brand design")));
   const vol = negVolAll.find(c => c.name === catName);
   const hor = negHorAll.find(c => c.name === catName);
   if (!vol) return;
@@ -233,13 +238,14 @@ function openNegModal(catName) {
   const pctVol   = totalVol > 0 ? Math.round(vol.ytd / totalVol * 100) : 0;
   const pctHor   = hor && totalHor > 0 ? Math.round(hor.ytd / totalHor * 100) : null;
   const ratio    = hor && vol.ytd > 0 ? (hor.ytd / vol.ytd).toFixed(1) : null;
+  const lbl      = isSingle ? shortMonth(d.negVol.months[ci]) : "YTD";
 
   document.getElementById("nmTitle").textContent = catName;
 
   const kpis = [
-    { val: vol.ytd.toLocaleString("es-ES"), lbl: "Trabajos YTD" },
+    { val: vol.ytd.toLocaleString("es-ES"), lbl: "Trabajos " + lbl },
     { val: pctVol + "%", lbl: "% vol. total" },
-    ...(hor ? [{ val: Math.round(hor.ytd).toLocaleString("es-ES") + " h", lbl: "Horas YTD" }] : []),
+    ...(hor ? [{ val: Math.round(hor.ytd).toLocaleString("es-ES") + " h", lbl: "Horas " + lbl }] : []),
     ...(pctHor !== null ? [{ val: pctHor + "%", lbl: "% horas totales" }] : []),
     ...(ratio ? [{ val: ratio + " h", lbl: "H / trabajo" }] : [])
   ];
@@ -251,20 +257,19 @@ function openNegModal(catName) {
     const max = Math.max(...monthly.map(v => v || 0), 1);
     document.getElementById(containerId).innerHTML = months.map((m, i) => {
       const v = monthly[i] || 0;
-      const pct = v / max * 100;
       return `<div class="nm-bar-row">
         <div class="nm-bar-name">${shortMonth(m)}</div>
-        <div class="nm-bar-track"><div class="nm-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+        <div class="nm-bar-track"><div class="nm-bar-fill" style="width:${v/max*100}%;background:${color}"></div></div>
         <div class="nm-bar-val">${v.toLocaleString("es-ES")}</div>
       </div>`;
     }).join("");
   }
-  miniBar("nmVolBars", lastData.negVol.months, vol.monthly, "var(--yellow)");
+  miniBar("nmVolBars", d.negVol.months, vol.monthly, "var(--yellow)");
 
   const horSection = document.getElementById("nmHorSection");
   if (hor) {
     horSection.style.display = "";
-    miniBar("nmHorBars", lastData.negHoras.months, hor.monthly, "var(--n4)");
+    miniBar("nmHorBars", d.negHoras.months, hor.monthly, "var(--n4)");
   } else {
     horSection.style.display = "none";
   }
@@ -273,15 +278,18 @@ function openNegModal(catName) {
   if (lastData2025) {
     const nv25 = mergeResidencial(renameCategories(lastData2025.negVol.categories));
     const nh25 = mergeResidencial(renameCategories(lastData2025.negHoras.categories.filter(c => c.name.trim().toLowerCase() !== "brand design")));
-    const vol25 = nv25.find(c => c.name === catName);
-    const hor25 = nh25.find(c => c.name === catName);
-    const nMo = lastData.negVol.months.length;
-    const sum25 = (cat) => cat ? cat.monthly.slice(0, nMo).reduce((a, b) => a + b, 0) : 0;
-    const vol25ytd = sum25(vol25);
-    const hor25ytd = hor25 ? sum25(hor25) : 0;
+    const vol25raw = nv25.find(c => c.name === catName);
+    const hor25raw = nh25.find(c => c.name === catName);
+    const get25 = (cat) => {
+      if (!cat) return 0;
+      if (isSingle) return cat.monthly[ci] || 0;
+      return cat.monthly.slice(0, d.negVol.months.length).reduce((a, b) => a + b, 0);
+    };
+    const vol25ytd = get25(vol25raw);
+    const hor25ytd = get25(hor25raw);
     const rows = [];
-    if (vol25) rows.push({ lbl: `Trabajos 2025: ${vol25ytd.toLocaleString("es-ES")}`, v26: vol.ytd, v25: vol25ytd });
-    if (hor && hor25) rows.push({ lbl: `Horas 2025: ${Math.round(hor25ytd).toLocaleString("es-ES")} h`, v26: hor.ytd, v25: hor25ytd });
+    if (vol25raw) rows.push({ lbl: `Trabajos 2025: ${vol25ytd.toLocaleString("es-ES")}`, v26: vol.ytd, v25: vol25ytd });
+    if (hor && hor25raw) rows.push({ lbl: `Horas 2025: ${Math.round(hor25ytd).toLocaleString("es-ES")} h`, v26: hor.ytd, v25: hor25ytd });
     if (rows.length) {
       yoyEl.innerHTML = rows.map(r =>
         `<div class="nm-yoy-row"><span class="nm-yoy-lbl">${r.lbl}</span>${subYoY(r.v26, r.v25)}</div>`
@@ -298,16 +306,20 @@ function openNegModal(catName) {
 }
 
 function openCiuModal(catName) {
-  if (!lastData) return;
-  const cats = renameCategories(lastData.ciudad.categories);
+  if (!currentRenderData) return;
+  const d = currentRenderData;
+  const ci = currentCi;
+  const isSingle = ci >= 0;
+  const cats = renameCategories(d.ciudad.categories);
   const city = cats.find(c => c.name === catName);
   if (!city) return;
   const total = cats.reduce((s, c) => s + c.ytd, 0);
   const pct   = total > 0 ? Math.round(city.ytd / total * 100) : 0;
+  const lbl   = isSingle ? shortMonth(d.ciudad.months[ci]) : "YTD";
 
   document.getElementById("nmTitle").textContent = catName;
   document.getElementById("nmKpis").innerHTML = [
-    { val: city.ytd.toLocaleString("es-ES"), lbl: "Trabajos YTD" },
+    { val: city.ytd.toLocaleString("es-ES"), lbl: "Trabajos " + lbl },
     { val: pct + "%", lbl: "% del total" }
   ].map(k => `<div class="nm-kpi"><div class="nmk-val">${k.val}</div><div class="nmk-lbl">${k.lbl}</div></div>`).join("");
 
@@ -323,7 +335,7 @@ function openCiuModal(catName) {
     }).join("");
   }
   document.querySelector("#nmVolBars").previousElementSibling.textContent = "Evolución mensual — Trabajos";
-  miniBar("nmVolBars", lastData.ciudad.months, city.monthly, "var(--yellow)");
+  miniBar("nmVolBars", d.ciudad.months, city.monthly, "var(--yellow)");
   document.getElementById("nmHorSection").style.display = "none";
 
   const yoyEl = document.getElementById("nmYoY");
@@ -331,8 +343,9 @@ function openCiuModal(catName) {
     const cats25 = renameCategories(lastData2025.ciudad.categories);
     const city25 = cats25.find(c => c.name === catName);
     if (city25) {
-      const nMo = lastData.ciudad.months.length;
-      const city25ytd = city25.monthly.slice(0, nMo).reduce((a, b) => a + b, 0);
+      const city25ytd = isSingle
+        ? (city25.monthly[ci] || 0)
+        : city25.monthly.slice(0, d.ciudad.months.length).reduce((a, b) => a + b, 0);
       yoyEl.innerHTML = `<div class="nm-yoy-row"><span class="nm-yoy-lbl">Trabajos 2025: ${city25ytd.toLocaleString("es-ES")}</span>${subYoY(city.ytd, city25ytd)}</div>`;
       yoyEl.style.display = "";
     } else {
@@ -346,6 +359,8 @@ function openCiuModal(catName) {
 }
 
 function render(d, ci = -1) {
+  currentRenderData = d;
+  currentCi = ci;
   document.getElementById("pb").textContent = period(d.tipologia.months);
   const lm = d.tipologia.months.length - 1;
   const isSingle = ci >= 0;
