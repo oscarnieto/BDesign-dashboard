@@ -186,7 +186,7 @@ function renderCombo(d, mob) {
   });
 }
 
-function vBar(canvasId, data, suf) {
+function vBar(canvasId, data, suf, onClickFn) {
   kill(canvasId);
   const mob = isMobile();
   const s = sorted(mob ? data.slice(0, 5) : data);
@@ -206,6 +206,7 @@ function vBar(canvasId, data, suf) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      ...(onClickFn ? { onClick: (evt, els) => { if (els.length) onClickFn(s[els[0].index]); } } : {}),
       plugins: {
         legend: { display: false },
         tooltip: { callbacks: { label: ctx => " " + ctx.parsed.y.toLocaleString("es-ES") + suf + " (" + Math.round(ctx.parsed.y / tot * 100) + "%)" } }
@@ -216,6 +217,80 @@ function vBar(canvasId, data, suf) {
       }
     }
   });
+  if (onClickFn) document.getElementById(canvasId).style.cursor = "pointer";
+}
+
+function openNegModal(catName) {
+  if (!lastData) return;
+  const negVolAll  = mergeResidencial(renameCategories(lastData.negVol.categories));
+  const negHorAll  = mergeResidencial(renameCategories(lastData.negHoras.categories.filter(c => c.name.trim().toLowerCase() !== "brand design")));
+  const vol = negVolAll.find(c => c.name === catName);
+  const hor = negHorAll.find(c => c.name === catName);
+  if (!vol) return;
+
+  const totalVol = negVolAll.reduce((s, c) => s + c.ytd, 0);
+  const totalHor = negHorAll.reduce((s, c) => s + c.ytd, 0);
+  const pctVol   = totalVol > 0 ? Math.round(vol.ytd / totalVol * 100) : 0;
+  const pctHor   = hor && totalHor > 0 ? Math.round(hor.ytd / totalHor * 100) : null;
+  const ratio    = hor && vol.ytd > 0 ? (hor.ytd / vol.ytd).toFixed(1) : null;
+
+  document.getElementById("nmTitle").textContent = catName;
+
+  const kpis = [
+    { val: vol.ytd.toLocaleString("es-ES"), lbl: "Trabajos YTD" },
+    { val: pctVol + "%", lbl: "% vol. total" },
+    ...(hor ? [{ val: Math.round(hor.ytd).toLocaleString("es-ES") + " h", lbl: "Horas YTD" }] : []),
+    ...(pctHor !== null ? [{ val: pctHor + "%", lbl: "% horas totales" }] : []),
+    ...(ratio ? [{ val: ratio + " h", lbl: "H / trabajo" }] : [])
+  ];
+  document.getElementById("nmKpis").innerHTML = kpis.map(k =>
+    `<div class="nm-kpi"><div class="nmk-val">${k.val}</div><div class="nmk-lbl">${k.lbl}</div></div>`
+  ).join("");
+
+  function miniBar(containerId, months, monthly, color) {
+    const max = Math.max(...monthly.map(v => v || 0), 1);
+    document.getElementById(containerId).innerHTML = months.map((m, i) => {
+      const v = monthly[i] || 0;
+      const pct = v / max * 100;
+      return `<div class="nm-bar-row">
+        <div class="nm-bar-name">${shortMonth(m)}</div>
+        <div class="nm-bar-track"><div class="nm-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+        <div class="nm-bar-val">${v.toLocaleString("es-ES")}</div>
+      </div>`;
+    }).join("");
+  }
+  miniBar("nmVolBars", lastData.negVol.months, vol.monthly, "var(--yellow)");
+
+  const horSection = document.getElementById("nmHorSection");
+  if (hor) {
+    horSection.style.display = "";
+    miniBar("nmHorBars", lastData.negHoras.months, hor.monthly, "var(--n4)");
+  } else {
+    horSection.style.display = "none";
+  }
+
+  const yoyEl = document.getElementById("nmYoY");
+  if (lastData2025) {
+    const nv25 = mergeResidencial(renameCategories(lastData2025.negVol.categories));
+    const nh25 = mergeResidencial(renameCategories(lastData2025.negHoras.categories.filter(c => c.name.trim().toLowerCase() !== "brand design")));
+    const vol25 = nv25.find(c => c.name === catName);
+    const hor25 = nh25.find(c => c.name === catName);
+    const rows = [];
+    if (vol25) rows.push({ lbl: `Trabajos 2025: ${vol25.ytd.toLocaleString("es-ES")}`, v26: vol.ytd, v25: vol25.ytd });
+    if (hor && hor25) rows.push({ lbl: `Horas 2025: ${Math.round(hor25.ytd).toLocaleString("es-ES")} h`, v26: hor.ytd, v25: hor25.ytd });
+    if (rows.length) {
+      yoyEl.innerHTML = rows.map(r =>
+        `<div class="nm-yoy-row"><span class="nm-yoy-lbl">${r.lbl}</span>${subYoY(r.v26, r.v25)}</div>`
+      ).join("");
+      yoyEl.style.display = "";
+    } else {
+      yoyEl.style.display = "none";
+    }
+  } else {
+    yoyEl.style.display = "none";
+  }
+
+  document.getElementById("negModal").classList.add("open");
 }
 
 function render(d, ci = -1) {
@@ -277,7 +352,7 @@ function render(d, ci = -1) {
     renameCategories(d.negHoras.categories.filter(c => c.name.trim().toLowerCase() !== "brand design"))
   );
   vBar("tc",  tipologiaMerged,  " trabajos");
-  vBar("nc",  negVolMerged,     " trabajos");
+  vBar("nc",  negVolMerged,     " trabajos", (cat) => openNegModal(cat.name));
   vBar("nhc", negHorasMerged,   " h");
 
   kill("cc2");
@@ -616,6 +691,18 @@ document.getElementById("viewDataBtnM").addEventListener("click", () => {
   if (!lastData) return;
   buildDataPanel(lastData);
   document.getElementById("dataPanel").classList.add("open");
+});
+
+// ── Modal negocio — cierre ────────────────────────────────────
+document.getElementById("nmClose").addEventListener("click", () =>
+  document.getElementById("negModal").classList.remove("open")
+);
+document.getElementById("negModal").addEventListener("click", e => {
+  if (e.target === document.getElementById("negModal"))
+    document.getElementById("negModal").classList.remove("open");
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") document.getElementById("negModal").classList.remove("open");
 });
 
 // Sincronizar filtro de mes móvil ↔ escritorio

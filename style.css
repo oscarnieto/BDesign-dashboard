@@ -192,7 +192,41 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
 .dp-table .ytd-col{color:var(--yellow)!important;font-weight:700}
 .dp-table tfoot td{font-weight:700;color:var(--yellow);border-top:1px solid var(--border);border-bottom:none;background:rgba(255,222,0,.04)}
 
-/* ── Burger menu ─────────────────────────────────────────── */
+/* ── Modal negocio ──────────────────────────────────────────── */
+.neg-modal-bg{
+  position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);
+  z-index:200;display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.neg-modal-bg.open{opacity:1;pointer-events:all}
+.neg-modal{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  width:min(500px,92vw);max-height:90vh;overflow-y:auto;
+  padding:var(--pad);display:flex;flex-direction:column;gap:18px;
+  animation:nmIn .22s ease;
+}
+@keyframes nmIn{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+.nm-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.nm-title{font-size:1.05rem;font-weight:700;color:var(--yellow)}
+.nm-close{background:none;border:none;color:var(--gray);cursor:pointer;font-size:1.1rem;padding:4px 6px;border-radius:6px;transition:color .15s,background .15s}
+.nm-close:hover{color:var(--white);background:rgba(255,255,255,.08)}
+.nm-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:10px}
+.nm-kpi{background:rgba(255,255,255,.04);border-radius:10px;padding:12px 10px;text-align:center}
+.nmk-val{font-size:1.25rem;font-weight:800;color:var(--white)}
+.nmk-lbl{font-size:.68rem;color:var(--gray);margin-top:3px;text-transform:uppercase;letter-spacing:.05em}
+.nm-section{display:flex;flex-direction:column}
+.nm-sec-label{font-size:.72rem;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.nm-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:.8rem}
+.nm-bar-name{width:46px;color:var(--gray2);text-align:right;flex-shrink:0;font-size:.75rem}
+.nm-bar-track{flex:1;background:rgba(255,255,255,.06);border-radius:4px;height:7px;overflow:hidden}
+.nm-bar-fill{height:100%;border-radius:4px;transition:width .4s ease}
+.nm-bar-val{width:38px;color:var(--white);text-align:right;flex-shrink:0;font-weight:600}
+.nm-yoy{display:flex;flex-direction:column;gap:8px;padding-top:14px;border-top:1px solid var(--border)}
+.nm-yoy-row{display:flex;justify-content:space-between;align-items:center;font-size:.8rem}
+.nm-yoy-lbl{color:var(--gray)}
+.nm-yoy .up{color:var(--green)}.nm-yoy .dn{color:var(--red)}
+
+/* ── Burger menu ──────────────────────────────────────────────────── */
 .burger-btn{
   display:none;align-items:center;justify-content:center;
   background:rgba(255,255,255,.06);border:1px solid var(--border);
