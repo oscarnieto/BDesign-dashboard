@@ -512,6 +512,8 @@ function render(d, ci = -1) {
   kill("radarChart");
   const radarCats = sorted(negVolMerged).slice(0, 6);
   const maxVol = Math.max(...radarCats.map(c => c.ytd));
+  const radarHoras = radarCats.map(c => negHorasMerged.find(nh => nh.name === c.name) || { ytd: 0 });
+  const maxHor = Math.max(...radarHoras.map(h => h.ytd), 1);
   charts.radarChart = new Chart(document.getElementById("radarChart"), {
     type: "radar",
     data: {
@@ -521,12 +523,24 @@ function render(d, ci = -1) {
           label: "Volumen trabajos",
           data: radarCats.map(c => maxVol > 0 ? Math.round(c.ytd / maxVol * 100) : 0),
           borderColor: Y, backgroundColor: "rgba(255,222,0,.15)", pointBackgroundColor: Y, pointRadius: 4, borderWidth: 2
+        },
+        {
+          label: "Horas",
+          data: radarHoras.map(h => Math.round(h.ytd / maxHor * 100)),
+          borderColor: "rgba(255,255,255,.7)", backgroundColor: "rgba(255,255,255,.07)",
+          pointBackgroundColor: "rgba(255,255,255,.8)", pointRadius: 4, borderWidth: 2
         }
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: { display: true, position: "top", labels: { color: "#c2c5da", font: { family: "Montserrat", size: 11 }, boxWidth: 10, padding: 14 } },
+        tooltip: { callbacks: { label: ctx => {
+          if (ctx.datasetIndex === 0) return " " + radarCats[ctx.dataIndex].ytd.toLocaleString("es-ES") + " trabajos";
+          return " " + Math.round(radarHoras[ctx.dataIndex].ytd).toLocaleString("es-ES") + " h";
+        }}}
+      },
       scales: {
         r: {
           ticks: { display: false },
