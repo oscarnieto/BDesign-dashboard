@@ -471,24 +471,40 @@ function render(d, ci = -1) {
     return negHorasMerged.find(nh => nh.name === nv.name);
   }).map(nv => {
     const nh = negHorasMerged.find(nh => nh.name === nv.name);
-    return { name: nv.name, ratio: nv.ytd > 0 ? parseFloat((nh.ytd / nv.ytd).toFixed(1)) : 0 };
+    return { name: nv.name, ytd: nv.ytd, ratio: nv.ytd > 0 ? parseFloat((nh.ytd / nv.ytd).toFixed(1)) : 0 };
   }).sort((a, b) => b.ratio - a.ratio);
   const ratioColors = cols(negCommon.length);
   charts.ratioChart = new Chart(document.getElementById("ratioChart"), {
     type: "bar",
     data: {
       labels: negCommon.map(c => c.name),
-      datasets: [{ data: negCommon.map(c => c.ratio), backgroundColor: ratioColors, borderRadius: 4, borderSkipped: false }]
+      datasets: [
+        {
+          type: "bar", label: "H / trabajo", data: negCommon.map(c => c.ratio),
+          backgroundColor: ratioColors, borderRadius: 4, borderSkipped: false, yAxisID: "y", order: 1
+        },
+        {
+          type: "line", label: "Proyectos", data: negCommon.map(c => c.ytd),
+          borderColor: "rgba(255,222,0,.7)", backgroundColor: "rgba(255,222,0,.08)",
+          pointBackgroundColor: "rgba(255,222,0,.9)", pointBorderColor: "#12152a", pointBorderWidth: 2,
+          pointRadius: 5, tension: .35, fill: false, yAxisID: "y1", order: 0
+        }
+      ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
       plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: ctx => " " + ctx.parsed.y.toFixed(1) + " h/trabajo" } }
+        legend: { display: true, position: "top", labels: { color: "#c2c5da", font: { family: "Montserrat", size: 11 }, boxWidth: 10, padding: 14 } },
+        tooltip: { callbacks: { label: ctx => ctx.datasetIndex === 0
+          ? " " + ctx.parsed.y.toFixed(1) + " h/trabajo"
+          : " " + ctx.parsed.y.toLocaleString("es-ES") + " proyectos"
+        }}
       },
       scales: {
         x: { ticks: { display: !isMobile(), color: "#c2c5da", font: { family: "Montserrat", size: 10 }, maxRotation: 35, minRotation: 25 }, grid: { display: false }, border: { display: false } },
-        y: { ticks: { color: "#9499c0", font: { family: "Montserrat", size: 10 } }, grid: { color: "rgba(255,255,255,.05)" }, border: { display: false } }
+        y: { position: "left", ticks: { color: "#9499c0", font: { family: "Montserrat", size: 10 } }, grid: { color: "rgba(255,255,255,.05)" }, border: { display: false } },
+        y1: { position: "right", ticks: { color: "rgba(255,222,0,.6)", font: { family: "Montserrat", size: 10 } }, grid: { display: false }, border: { display: false } }
       }
     }
   });
