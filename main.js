@@ -453,6 +453,21 @@ function render(d, ci = -1) {
 
   document.getElementById("rv").textContent = d.rrss.volYTD.toLocaleString("es-ES");
   document.getElementById("rh").textContent = d.rrss.horYTD.toLocaleString("es-ES") + " h";
+  document.getElementById("rvl").textContent = "RRSS: Publicaciones " + periodLbl;
+  document.getElementById("rhl").textContent = "RRSS: Horas dedicadas " + periodLbl;
+  if (lastData2025 && lastData2025.rrss) {
+    const nMo = d.rrss.months.length;
+    const rv25 = isSingle
+      ? (lastData2025.rrss.volMon[ci] || 0)
+      : lastData2025.rrss.volMon.slice(0, nMo).reduce((a, b) => a + b, 0);
+    const rh25 = isSingle
+      ? (lastData2025.rrss.horMon[ci] || 0)
+      : lastData2025.rrss.horMon.slice(0, nMo).reduce((a, b) => a + b, 0);
+    setHtml("rvy", subYoYAbs(d.rrss.volYTD, rv25, "", yoyLbl) + " " + subYoY(d.rrss.volYTD, rv25));
+    setHtml("rhy", subYoYAbs(d.rrss.horYTD, rh25, " h", yoyLbl) + " " + subYoY(d.rrss.horYTD, rh25));
+  } else {
+    setHtml("rvy", ""); setHtml("rhy", "");
+  }
   function mb(id, vals, months) {
     const mx = Math.max(...vals);
     const mxi = vals.indexOf(mx);
@@ -614,21 +629,24 @@ function parseExcel(buf) {
 
   const rr = wb.Sheets["RRSS"] ? XLSX.utils.sheet_to_json(wb.Sheets["RRSS"], { header: 1, defval: null }) : null;
   if (rr) {
-    const h = rr[2], v = rr[3], hr = rr[4];
-    const ms = [], vm = [], hm = [];
-    let vY = 0, hY = 0;
-    for (let c = 1; c < h.length; c++) {
-      if (!h[c]) continue;
-      if (String(h[c]).toLowerCase().includes("total")) {
-        vY = Number(v[c]) || 0;
-        hY = Number(hr[c]) || 0;
-      } else {
-        ms.push(String(h[c]));
-        vm.push(Number(v[c]) || 0);
-        hm.push(Number(hr[c]) || 0);
+    const hIdx = rr.findIndex(row => row && row.some(c => c && String(c).toLowerCase().includes("ene")));
+    if (hIdx >= 0) {
+      const h = rr[hIdx], v = rr[hIdx + 1], hr = rr[hIdx + 2];
+      const ms = [], vm = [], hm = [];
+      let vY = 0, hY = 0;
+      for (let c = 1; c < h.length; c++) {
+        if (!h[c]) continue;
+        if (String(h[c]).toLowerCase().includes("total")) {
+          vY = Number(v[c]) || 0;
+          hY = Number(hr ? hr[c] : 0) || 0;
+        } else {
+          ms.push(String(h[c]));
+          vm.push(Number(v[c]) || 0);
+          hm.push(Number(hr ? hr[c] : 0) || 0);
+        }
       }
+      d.rrss = { months: ms, volMon: vm, horMon: hm, volYTD: vY || vm.reduce((a, b) => a + b, 0), horYTD: hY || hm.reduce((a, b) => a + b, 0) };
     }
-    d.rrss = { months: ms, volMon: vm, horMon: hm, volYTD: vY || vm.reduce((a, b) => a + b, 0), horYTD: hY || hm.reduce((a, b) => a + b, 0) };
   }
 
   if (!d.tipologia) throw new Error("Estructura de Excel no reconocida. Asegúrate de que el archivo tiene la hoja 'Tipologia'.");
