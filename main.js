@@ -453,21 +453,6 @@ function render(d, ci = -1) {
 
   document.getElementById("rv").textContent = d.rrss.volYTD.toLocaleString("es-ES");
   document.getElementById("rh").textContent = d.rrss.horYTD.toLocaleString("es-ES") + " h";
-  document.getElementById("rvl").textContent = "RRSS: Publicaciones " + periodLbl;
-  document.getElementById("rhl").textContent = "RRSS: Horas dedicadas " + periodLbl;
-  if (lastData2025 && lastData2025.rrss) {
-    const nMo = d.rrss.months.length;
-    const rv25 = isSingle
-      ? (lastData2025.rrss.volMon[ci] || 0)
-      : lastData2025.rrss.volMon.slice(0, nMo).reduce((a, b) => a + b, 0);
-    const rh25 = isSingle
-      ? (lastData2025.rrss.horMon[ci] || 0)
-      : lastData2025.rrss.horMon.slice(0, nMo).reduce((a, b) => a + b, 0);
-    setHtml("rvy", subYoYAbs(d.rrss.volYTD, rv25, "", yoyLbl) + " " + subYoY(d.rrss.volYTD, rv25));
-    setHtml("rhy", subYoYAbs(d.rrss.horYTD, rh25, " h", yoyLbl) + " " + subYoY(d.rrss.horYTD, rh25));
-  } else {
-    setHtml("rvy", ""); setHtml("rhy", "");
-  }
   function mb(id, vals, months) {
     const mx = Math.max(...vals);
     const mxi = vals.indexOf(mx);
