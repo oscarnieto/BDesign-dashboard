@@ -589,16 +589,26 @@ function parseExcel(buf) {
 
   const er = wb.Sheets["Entrega"] ? XLSX.utils.sheet_to_json(wb.Sheets["Entrega"], { header: 1, defval: null }) : null;
   if (er) {
-    const h = er[2], dv = er[3], mv = er[4];
-    const ms = [], vs = [];
-    for (let c = 1; c < h.length; c++) {
-      if (h[c] && !String(h[c]).toLowerCase().includes("total")) {
-        ms.push(String(h[c]));
-        vs.push(Number(dv[c]) || 0);
+    const hIdx = er.findIndex(r => r && r.some(c => c && String(c).toLowerCase().includes("ene")));
+    if (hIdx >= 0) {
+      const h = er[hIdx];
+      const ms = [];
+      for (let c = 1; c < h.length; c++) {
+        if (h[c] && !String(h[c]).toLowerCase().includes("total")) ms.push(String(h[c]));
       }
+      const dataRows = er.slice(hIdx + 1).filter(r => r && r[0] &&
+        !String(r[0]).toLowerCase().includes("total") &&
+        !String(r[0]).toLowerCase().includes("media"));
+      const vs = ms.map((_, i) => {
+        const vals = dataRows.map(r => Number(r[i + 1]) || 0).filter(v => v > 0);
+        return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+      });
+      const mediaRow = er.find(r => r && r[0] && String(r[0]).toLowerCase().includes("media"));
+      const media = mediaRow ? (Number(mediaRow[1]) || 0) : (vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : 0);
+      d.entrega = { months: ms, values: vs, mediaYTD: media };
+    } else {
+      d.entrega = { months: [], values: [], mediaYTD: 0 };
     }
-    const media = mv ? (Number(mv[1]) || 0) : (vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : 0);
-    d.entrega = { months: ms, values: vs, mediaYTD: media };
   } else {
     d.entrega = { months: [], values: [], mediaYTD: 0 };
   }
