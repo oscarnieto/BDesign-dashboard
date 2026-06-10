@@ -85,19 +85,21 @@ function cols(n) {
 function sorted(cats) {
   return [...cats].sort((a, b) => b.ytd - a.ytd);
 }
-function sub(cur, prev, u = "") {
-  if (prev === null) return "";
-  const d = cur - prev;
-  if (d === 0) return "Sin cambios";
-  const cl = d > 0 ? "up" : "dn";
-  return `<span class="${cl}">${d > 0 ? "▲" : "▼"} ${d > 0 ? "+" : ""}${Number.isInteger(d) ? d : d.toFixed(1)}${u}</span> vs mes anterior`;
-}
 function subYoY(v26, v25, lowerIsBetter = false) {
   if (v25 === null || v25 === undefined || v25 === 0) return "";
   const pct = Math.round((v26 - v25) / v25 * 100);
   const isGood = lowerIsBetter ? pct <= 0 : pct >= 0;
   const cls = isGood ? "up" : "dn";
   return `<span class="${cls}">${pct >= 0 ? "+" : ""}${pct}% vs 2025</span>`;
+}
+function subYoYAbs(cur, prev, u = "", label = "YTD 2025", lowerIsBetter = false) {
+  if (prev === null || prev === undefined) return "";
+  const d = cur - prev;
+  if (d === 0) return "Sin cambios vs " + label;
+  const isGood = lowerIsBetter ? d < 0 : d > 0;
+  const cl = isGood ? "up" : "dn";
+  const val = Number.isInteger(d) ? d : d.toFixed(1);
+  return `<span class="${cl}">${d > 0 ? "▲" : "▼"} ${d > 0 ? "+" : ""}${val}${u}</span> vs ${label}`;
 }
 function kill(id) {
   if (charts[id]) { charts[id].destroy(); delete charts[id]; }
@@ -376,31 +378,28 @@ function render(d, ci = -1) {
     return cats.reduce((s, c) => s + c.monthly.slice(0, lm + 1).reduce((a, b) => a + b, 0), 0);
   }
 
+  const yoyLbl = isSingle ? d.tipologia.months[lm] + " 2025" : "YTD 2025";
+
   // KPI 0 — Total trabajos
   const tw = d.tipologia.categories.reduce((s, c) => s + c.ytd, 0);
-  const wl = d.tipologia.categories.reduce((s, c) => s + (c.monthly[lm] || 0), 0);
-  const wp = lm > 0 ? d.tipologia.categories.reduce((s, c) => s + (c.monthly[lm - 1] || 0), 0) : null;
+  const tw25 = yoySum("tipologia");
   document.getElementById("kv0").textContent = tw.toLocaleString("es-ES");
-  document.getElementById("ks0").innerHTML = sub(wl, wp);
-  setHtml("ks0y", subYoY(tw, yoySum("tipologia")));
+  document.getElementById("ks0").innerHTML = subYoYAbs(tw, tw25, "", yoyLbl);
+  setHtml("ks0y", subYoY(tw, tw25));
 
   // KPI 1 — Total horas
   const th = d.negHoras.categories.reduce((s, c) => s + c.ytd, 0);
-  const hl = d.negHoras.categories.reduce((s, c) => s + (c.monthly[lm] || 0), 0);
-  const hp = lm > 0 ? d.negHoras.categories.reduce((s, c) => s + (c.monthly[lm - 1] || 0), 0) : null;
+  const th25 = yoySum("negHoras");
   document.getElementById("kv1").textContent = th.toLocaleString("es-ES");
-  document.getElementById("ks1").innerHTML = sub(hl, hp, " h");
-  setHtml("ks1y", subYoY(th, yoySum("negHoras")));
+  document.getElementById("ks1").innerHTML = subYoYAbs(th, th25, " h", yoyLbl);
+  setHtml("ks1y", subYoY(th, th25));
 
   // KPI 2 — Entrega
-  const ev = d.entrega.values;
-  const el = ev.length > 0 ? ev[Math.min(lm, ev.length - 1)] : 0;
-  const ep = lm > 0 && ev.length > 1 ? ev[Math.min(lm - 1, ev.length - 1)] : null;
   const em25 = lastData2025 && lastData2025.entrega
     ? (isSingle ? (lastData2025.entrega.values[ci] || null) : lastData2025.entrega.mediaYTD)
     : null;
   document.getElementById("kv2").textContent = d.entrega.mediaYTD.toFixed(1) + " d";
-  document.getElementById("ks2").innerHTML = sub(el, ep, " d");
+  document.getElementById("ks2").innerHTML = subYoYAbs(d.entrega.mediaYTD, em25, " d", yoyLbl, true);
   setHtml("ks2y", subYoY(d.entrega.mediaYTD, em25, true));
 
   // KPI 3 — Trabajos externalizados
