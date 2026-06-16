@@ -226,6 +226,20 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
 .nm-yoy-row{display:flex;justify-content:space-between;align-items:center;font-size:.8rem}
 .nm-yoy-lbl{color:var(--gray)}
 .nm-yoy .up{color:var(--green)}.nm-yoy .dn{color:var(--red)}
+.nm-cmp-row{display:grid;grid-template-columns:1.5fr 1fr 1fr .9fr;align-items:center;gap:6px;font-size:.82rem;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.nm-cmp-row:last-child{border-bottom:none}
+.nm-cmp-row span:not(.nm-cmp-lbl){text-align:right}
+.nm-cmp-head{font-size:.64rem;text-transform:uppercase;letter-spacing:.05em;color:var(--gray);border-bottom:1px solid var(--border)}
+.nm-cmp-lbl{color:var(--gray2)}
+.nm-cmp-26{color:var(--white);font-weight:700}
+.nm-cmp-25{color:var(--gray)}
+.nm-cmp-row .up{color:var(--green);font-weight:700}
+.nm-cmp-row .dn{color:var(--red);font-weight:700}
+.nm-cmp-row .nt{color:var(--gray2);font-weight:700}
+.nm-share-track{background:rgba(255,255,255,.06);border-radius:5px;height:14px;overflow:hidden;margin-bottom:8px}
+.nm-share-fill{height:100%;background:linear-gradient(90deg,var(--yellow),#ffb800);border-radius:5px;transition:width .5s ease}
+.nm-share-meta{display:flex;justify-content:space-between;font-size:.78rem;color:var(--gray);margin-bottom:8px}
+.nm-share-meta b{color:var(--white)}
 
 /* ── Burger menu ──────────────────────────────────────────────────── */
 .burger-btn{

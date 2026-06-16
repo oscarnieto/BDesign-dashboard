@@ -276,32 +276,66 @@ function openNegModal(catName) {
     horSection.style.display = "none";
   }
 
-  const yoyEl = document.getElementById("nmYoY");
+  document.getElementById("nmYoY").style.display = "none";
+
+  // ── Comparativa interanual (vol / horas / complejidad) + peso sobre el total ──
+  const cmpSec   = document.getElementById("nmCmpSection");
+  const shareSec = document.getElementById("nmShareSection");
+  cmpSec.style.display   = "none";
+  shareSec.style.display = "none";
+
   if (lastData2025) {
     const nv25 = mergeResidencial(renameCategories(lastData2025.negVol.categories));
     const nh25 = mergeResidencial(renameCategories(lastData2025.negHoras.categories.filter(c => c.name.trim().toLowerCase() !== "brand design")));
-    const vol25raw = nv25.find(c => c.name === catName);
-    const hor25raw = nh25.find(c => c.name === catName);
     const get25 = (cat) => {
       if (!cat) return 0;
       if (isSingle) return cat.monthly[ci] || 0;
       return cat.monthly.slice(0, d.negVol.months.length).reduce((a, b) => a + b, 0);
     };
+    const vol25raw = nv25.find(c => c.name === catName);
+    const hor25raw = nh25.find(c => c.name === catName);
     const vol25ytd = get25(vol25raw);
     const hor25ytd = get25(hor25raw);
-    const rows = [];
-    if (vol25raw) rows.push({ lbl: `Trabajos 2025: ${vol25ytd.toLocaleString("es-ES")}`, v26: vol.ytd, v25: vol25ytd });
-    if (hor && hor25raw) rows.push({ lbl: `Horas 2025: ${Math.round(hor25ytd).toLocaleString("es-ES")} h`, v26: hor.ytd, v25: hor25ytd });
-    if (rows.length) {
-      yoyEl.innerHTML = rows.map(r =>
-        `<div class="nm-yoy-row"><span class="nm-yoy-lbl">${r.lbl}</span>${subYoY(r.v26, r.v25)}</div>`
-      ).join("");
-      yoyEl.style.display = "";
-    } else {
-      yoyEl.style.display = "none";
+
+    const cmpBadge = (v26, v25, neutral) => {
+      if (!v25) return `<span class="nt">—</span>`;
+      const pct = Math.round((v26 - v25) / v25 * 100);
+      const cls = neutral ? "nt" : (pct >= 0 ? "up" : "dn");
+      return `<span class="${cls}">${pct >= 0 ? "+" : ""}${pct}%</span>`;
+    };
+
+    const cmpRows = [];
+    if (vol25raw) cmpRows.push({ lbl: "Trabajos", v26: vol.ytd, v25: vol25ytd, fmt: v => Math.round(v).toLocaleString("es-ES") });
+    if (hor && hor25raw) {
+      cmpRows.push({ lbl: "Horas", v26: hor.ytd, v25: hor25ytd, fmt: v => Math.round(v).toLocaleString("es-ES") + " h" });
+      const cx26 = vol.ytd > 0 ? hor.ytd / vol.ytd : 0;
+      const cx25 = vol25ytd > 0 ? hor25ytd / vol25ytd : 0;
+      cmpRows.push({ lbl: "Complejidad", v26: cx26, v25: cx25, fmt: v => v.toFixed(1) + " h/t", neutral: true });
     }
-  } else {
-    yoyEl.style.display = "none";
+    if (cmpRows.length) {
+      document.getElementById("nmCmpLabel").textContent = "Comparativa vs 2025 — " + lbl;
+      document.getElementById("nmCmp").innerHTML =
+        `<div class="nm-cmp-row nm-cmp-head"><span></span><span>2026</span><span>2025</span><span>Δ</span></div>` +
+        cmpRows.map(r => `<div class="nm-cmp-row">
+          <span class="nm-cmp-lbl">${r.lbl}</span>
+          <span class="nm-cmp-26">${r.fmt(r.v26)}</span>
+          <span class="nm-cmp-25">${r.v25 ? r.fmt(r.v25) : "—"}</span>
+          ${cmpBadge(r.v26, r.v25, r.neutral)}
+        </div>`).join("");
+      cmpSec.style.display = "";
+    }
+
+    // Peso sobre el total de departamentos (volumen)
+    const total25Vol = nv25.reduce((s, c) => s + get25(c), 0);
+    const share25 = total25Vol > 0 ? Math.round(vol25ytd / total25Vol * 100) : null;
+    const ppDiff = share25 !== null ? pctVol - share25 : null;
+    const ppBadge = ppDiff === null ? "" :
+      `<span class="${ppDiff >= 0 ? "up" : "dn"}">${ppDiff >= 0 ? "+" : ""}${ppDiff} pp</span>`;
+    document.getElementById("nmShare").innerHTML =
+      `<div class="nm-share-track"><div class="nm-share-fill" style="width:${pctVol}%"></div></div>
+       <div class="nm-share-meta"><span>${vol.ytd.toLocaleString("es-ES")} de ${totalVol.toLocaleString("es-ES")} trabajos</span><span><b>${pctVol}%</b> del total</span></div>` +
+      (share25 !== null ? `<div class="nm-yoy-row"><span class="nm-yoy-lbl">2025: ${share25}% del total de departamentos</span>${ppBadge}</div>` : "");
+    shareSec.style.display = "";
   }
 
   document.getElementById("negModal").classList.add("open");
@@ -320,6 +354,8 @@ function openCiuModal(catName) {
   const lbl   = isSingle ? shortMonth(d.ciudad.months[ci]) : "YTD";
 
   document.getElementById("nmTitle").textContent = catName;
+  document.getElementById("nmCmpSection").style.display = "none";
+  document.getElementById("nmShareSection").style.display = "none";
   document.getElementById("nmKpis").innerHTML = [
     { val: city.ytd.toLocaleString("es-ES"), lbl: "Trabajos " + lbl },
     { val: pct + "%", lbl: "% del total" }
@@ -493,6 +529,7 @@ function render(d, ci = -1) {
     options: {
       responsive: true, maintainAspectRatio: false,
       interaction: { mode: "index", intersect: false },
+      onClick: (evt, els) => { if (els.length) openNegModal(negCommon[els[0].index].name); },
       plugins: {
         legend: { display: true, position: "top", labels: { color: "#c2c5da", font: { family: "Montserrat", size: 11 }, boxWidth: 10, padding: 14 } },
         tooltip: { callbacks: { label: ctx => ctx.datasetIndex === 0
@@ -507,6 +544,7 @@ function render(d, ci = -1) {
       }
     }
   });
+  document.getElementById("ratioChart").style.cursor = "pointer";
 
   kill("radarChart");
   const radarCats = sorted(negVolMerged).slice(0, 6);
