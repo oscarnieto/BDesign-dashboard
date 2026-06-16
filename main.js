@@ -306,12 +306,6 @@ function openNegModal(catName) {
 
     const cmpRows = [];
     if (vol25raw) cmpRows.push({ lbl: "Trabajos", v26: vol.ytd, v25: vol25ytd, fmt: v => Math.round(v).toLocaleString("es-ES") });
-    if (hor && hor25raw) {
-      cmpRows.push({ lbl: "Horas", v26: hor.ytd, v25: hor25ytd, fmt: v => Math.round(v).toLocaleString("es-ES") + " h" });
-      const cx26 = vol.ytd > 0 ? hor.ytd / vol.ytd : 0;
-      const cx25 = vol25ytd > 0 ? hor25ytd / vol25ytd : 0;
-      cmpRows.push({ lbl: "Complejidad", v26: cx26, v25: cx25, fmt: v => v.toFixed(1) + " h/t", neutral: true });
-    }
     if (cmpRows.length) {
       document.getElementById("nmCmpLabel").textContent = "Comparativa vs 2025 — " + lbl;
       document.getElementById("nmCmp").innerHTML =
