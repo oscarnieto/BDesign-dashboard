@@ -6,6 +6,48 @@ let lastData2025 = null;
 let currentRenderData = null;
 let currentCi = -1;
 
+// ── Theme helpers ─────────────────────────────────────
+const isLight = () => document.body.classList.contains('light');
+const TC   = () => isLight() ? '#374151' : '#c2c5da';
+const TC2  = () => isLight() ? '#6b7280' : '#9499c0';
+const GC   = () => isLight() ? 'rgba(0,0,0,.05)' : 'rgba(255,255,255,.04)';
+const GC2  = () => isLight() ? 'rgba(0,0,0,.06)' : 'rgba(255,255,255,.05)';
+const GC3  = () => isLight() ? 'rgba(0,0,0,.08)' : 'rgba(255,255,255,.08)';
+const WC   = () => isLight() ? '#12152a' : '#ffffff';
+const WA   = () => isLight() ? 'rgba(18,21,42,.08)' : 'rgba(255,255,255,.08)';
+const WD   = () => isLight() ? 'rgba(18,21,42,.3)'  : 'rgba(255,255,255,.3)';
+const WM   = () => isLight() ? 'rgba(18,21,42,.5)'  : 'rgba(255,255,255,.5)';
+const WL   = () => isLight() ? 'rgba(18,21,42,.7)'  : 'rgba(255,255,255,.7)';
+const WP   = () => isLight() ? 'rgba(18,21,42,.8)'  : 'rgba(255,255,255,.8)';
+const WBG  = () => isLight() ? 'rgba(18,21,42,.07)' : 'rgba(255,255,255,.07)';
+const AC   = () => isLight() ? 'rgba(18,21,42,.6)'  : 'rgba(255,222,0,.6)';
+const YM   = () => isLight() ? 'rgba(18,21,42,.45)' : 'rgba(255,222,0,.45)';
+const YD   = () => isLight() ? 'rgba(18,21,42,.7)'  : 'rgba(255,222,0,.7)';
+const YA   = () => isLight() ? 'rgba(18,21,42,.9)'  : 'rgba(255,222,0,.9)';
+const YBG  = () => isLight() ? 'rgba(18,21,42,.15)' : 'rgba(255,222,0,.15)';
+const YBG2 = () => isLight() ? 'rgba(18,21,42,.08)' : 'rgba(255,222,0,.08)';
+
+function applyTheme(theme, rerender = true) {
+  document.body.classList.toggle('light', theme === 'light');
+  ['ttDark','ttLight','ttDarkM','ttLightM'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('active', id.includes('Dark') ? theme === 'dark' : theme === 'light');
+  });
+  localStorage.setItem('bdesign-theme', theme);
+  if (rerender && currentRenderData) render(currentRenderData, currentCi);
+}
+
+function initThemeToggle() {
+  const saved = localStorage.getItem('bdesign-theme') || 'dark';
+  applyTheme(saved, false);
+  document.getElementById('ttDark')?.addEventListener('click', () => applyTheme('dark'));
+  document.getElementById('ttLight')?.addEventListener('click', () => applyTheme('light'));
+  document.getElementById('ttDarkM')?.addEventListener('click', () => applyTheme('dark'));
+  document.getElementById('ttLightM')?.addEventListener('click', () => applyTheme('light'));
+}
+initThemeToggle();
+
 // ── Tooltip global defaults (mejora móvil) ────────────
 Chart.defaults.plugins.tooltip.position = 'nearest';
 Chart.defaults.plugins.tooltip.caretPadding = 8;
@@ -152,8 +194,8 @@ function renderCombo(d, mob) {
       datasets: [
         {
           type: "line", label: "Total horas", data: hm,
-          borderColor: "#ffffff", backgroundColor: "rgba(255,255,255,.08)",
-          pointBackgroundColor: "#ffffff", pointBorderColor: "#12152a", pointBorderWidth: 2,
+          borderColor: WC(), backgroundColor: WA(),
+          pointBackgroundColor: WC(), pointBorderColor: isLight() ? "#f4f5f9" : "#12152a", pointBorderWidth: 2,
           pointRadius: 5, tension: .35, fill: true, yAxisID: "y1", order: 0
         },
         {
@@ -163,14 +205,14 @@ function renderCombo(d, mob) {
         },
         ...(wm25 ? [{
           type: "line", label: "Trabajos 2025", data: wm25,
-          borderColor: "rgba(255,222,0,.45)", borderDash: [5, 4],
-          pointRadius: 3, pointBackgroundColor: "rgba(255,222,0,.45)",
+          borderColor: YM(), borderDash: [5, 4],
+          pointRadius: 3, pointBackgroundColor: YM(),
           tension: .35, fill: false, yAxisID: "y", order: 2
         }] : []),
         ...(hm25 ? [{
           type: "line", label: "Horas 2025", data: hm25,
-          borderColor: "rgba(255,255,255,.3)", borderDash: [5, 4],
-          pointRadius: 3, pointBackgroundColor: "rgba(255,255,255,.3)",
+          borderColor: WD(), borderDash: [5, 4],
+          pointRadius: 3, pointBackgroundColor: WD(),
           tension: .35, fill: false, yAxisID: "y1", order: 0
         }] : [])
       ]
@@ -179,12 +221,12 @@ function renderCombo(d, mob) {
       responsive: true, maintainAspectRatio: false,
       interaction: { mode: "index", intersect: false },
       plugins: {
-        legend: { display: !mob, position: "top", labels: { color: "#c2c5da", font: { family: "Montserrat", size: 11 }, boxWidth: 10, padding: 14 } }
+        legend: { display: !mob, position: "top", labels: { color: TC(), font: { family: "Montserrat", size: 11 }, boxWidth: 10, padding: 14 } }
       },
       scales: {
-        x: { ticks: { color: "#c2c5da", font: { family: "Montserrat", size: 10 } }, grid: { color: "rgba(255,255,255,.04)" }, border: { display: false } },
-        y: { position: "left", ticks: { color: "#c2c5da", font: { family: "Montserrat", size: 10 } }, grid: { color: "rgba(255,255,255,.04)" }, border: { display: false } },
-        y1: { position: "right", ticks: { color: "rgba(255,255,255,.5)", font: { family: "Montserrat", size: 10 } }, grid: { display: false }, border: { display: false } }
+        x: { ticks: { color: TC(), font: { family: "Montserrat", size: 10 } }, grid: { color: GC() }, border: { display: false } },
+        y: { position: "left", ticks: { color: TC(), font: { family: "Montserrat", size: 10 } }, grid: { color: GC() }, border: { display: false } },
+        y1: { position: "right", ticks: { color: WM(), font: { family: "Montserrat", size: 10 } }, grid: { display: false }, border: { display: false } }
       }
     }
   });
@@ -216,8 +258,8 @@ function vBar(canvasId, data, suf, onClickFn) {
         tooltip: { callbacks: { label: ctx => " " + ctx.parsed.y.toLocaleString("es-ES") + suf + " (" + Math.round(ctx.parsed.y / tot * 100) + "%)" } }
       },
       scales: {
-        x: { ticks: { display: !mob, color: "#c2c5da", font: { family: "Montserrat", size: 10 }, maxRotation: 35, minRotation: 25 }, grid: { display: false }, border: { display: false } },
-        y: { ticks: { color: "#9499c0", font: { family: "Montserrat", size: 10 } }, grid: { color: "rgba(255,255,255,.05)" }, border: { display: false } }
+        x: { ticks: { display: !mob, color: TC(), font: { family: "Montserrat", size: 10 }, maxRotation: 35, minRotation: 25 }, grid: { display: false }, border: { display: false } },
+        y: { ticks: { color: TC2(), font: { family: "Montserrat", size: 10 } }, grid: { color: GC2() }, border: { display: false } }
       }
     }
   });
@@ -514,8 +556,8 @@ function render(d, ci = -1) {
         },
         {
           type: "line", label: "Proyectos", data: negCommon.map(c => c.ytd),
-          borderColor: "rgba(255,222,0,.7)", backgroundColor: "rgba(255,222,0,.08)",
-          pointBackgroundColor: "rgba(255,222,0,.9)", pointBorderColor: "#12152a", pointBorderWidth: 2,
+          borderColor: YD(), backgroundColor: YBG2(),
+          pointBackgroundColor: YA(), pointBorderColor: isLight() ? "#f4f5f9" : "#12152a", pointBorderWidth: 2,
           pointRadius: 5, tension: .35, fill: false, yAxisID: "y1", order: 0
         }
       ]
@@ -525,16 +567,16 @@ function render(d, ci = -1) {
       interaction: { mode: "index", intersect: false },
       onClick: (evt, els) => { if (els.length) openNegModal(negCommon[els[0].index].name); },
       plugins: {
-        legend: { display: true, position: "top", labels: { color: "#c2c5da", font: { family: "Montserrat", size: 11 }, boxWidth: 10, padding: 14 } },
+        legend: { display: true, position: "top", labels: { color: TC(), font: { family: "Montserrat", size: 11 }, boxWidth: 10, padding: 14 } },
         tooltip: { callbacks: { label: ctx => ctx.datasetIndex === 0
           ? " " + ctx.parsed.y.toFixed(1) + " h/trabajo"
           : " " + ctx.parsed.y.toLocaleString("es-ES") + " proyectos"
         }}
       },
       scales: {
-        x: { ticks: { display: !isMobile(), color: "#c2c5da", font: { family: "Montserrat", size: 10 }, maxRotation: 35, minRotation: 25 }, grid: { display: false }, border: { display: false } },
-        y: { position: "left", ticks: { color: "#9499c0", font: { family: "Montserrat", size: 10 } }, grid: { color: "rgba(255,255,255,.05)" }, border: { display: false } },
-        y1: { position: "right", ticks: { color: "rgba(255,222,0,.6)", font: { family: "Montserrat", size: 10 } }, grid: { display: false }, border: { display: false } }
+        x: { ticks: { display: !isMobile(), color: TC(), font: { family: "Montserrat", size: 10 }, maxRotation: 35, minRotation: 25 }, grid: { display: false }, border: { display: false } },
+        y: { position: "left", ticks: { color: TC2(), font: { family: "Montserrat", size: 10 } }, grid: { color: GC2() }, border: { display: false } },
+        y1: { position: "right", ticks: { color: AC(), font: { family: "Montserrat", size: 10 } }, grid: { display: false }, border: { display: false } }
       }
     }
   });
@@ -553,20 +595,20 @@ function render(d, ci = -1) {
         {
           label: "Volumen trabajos",
           data: radarCats.map(c => maxVol > 0 ? Math.round(c.ytd / maxVol * 100) : 0),
-          borderColor: Y, backgroundColor: "rgba(255,222,0,.15)", pointBackgroundColor: Y, pointRadius: 4, borderWidth: 2
+          borderColor: Y, backgroundColor: YBG(), pointBackgroundColor: Y, pointRadius: 4, borderWidth: 2
         },
         {
           label: "Horas",
           data: radarHoras.map(h => Math.round(h.ytd / maxHor * 100)),
-          borderColor: "rgba(255,255,255,.7)", backgroundColor: "rgba(255,255,255,.07)",
-          pointBackgroundColor: "rgba(255,255,255,.8)", pointRadius: 4, borderWidth: 2
+          borderColor: WL(), backgroundColor: WBG(),
+          pointBackgroundColor: WP(), pointRadius: 4, borderWidth: 2
         }
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
-        legend: { display: true, position: "top", labels: { color: "#c2c5da", font: { family: "Montserrat", size: 11 }, boxWidth: 10, padding: 14 } },
+        legend: { display: true, position: "top", labels: { color: TC(), font: { family: "Montserrat", size: 11 }, boxWidth: 10, padding: 14 } },
         tooltip: { callbacks: { label: ctx => {
           if (ctx.datasetIndex === 0) return " " + radarCats[ctx.dataIndex].ytd.toLocaleString("es-ES") + " trabajos";
           return " " + Math.round(radarHoras[ctx.dataIndex].ytd).toLocaleString("es-ES") + " h";
@@ -575,9 +617,9 @@ function render(d, ci = -1) {
       scales: {
         r: {
           ticks: { display: false },
-          grid: { color: "rgba(255,255,255,.08)" },
-          angleLines: { color: "rgba(255,255,255,.08)" },
-          pointLabels: { color: "#c2c5da", font: { family: "Montserrat", size: 10 } }
+          grid: { color: GC3() },
+          angleLines: { color: GC3() },
+          pointLabels: { color: TC(), font: { family: "Montserrat", size: 10 } }
         }
       }
     }

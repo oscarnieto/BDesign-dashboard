@@ -283,3 +283,68 @@ main{padding:clamp(14px,2.5vw,32px) clamp(14px,3vw,32px);max-width:1600px;margin
   .burger-btn{display:flex}
   .export-btn,.view-data-btn,.month-filter{display:none!important}
 }
+/* ── Theme toggle button ───────────────────────────────── */
+.theme-toggle{
+  display:flex;background:rgba(255,255,255,.06);
+  border:1px solid var(--border);border-radius:20px;
+  padding:3px;gap:2px;flex-shrink:0;
+}
+.tt-btn{
+  display:flex;align-items:center;gap:5px;padding:4px 10px;
+  border:none;border-radius:16px;
+  font-family:"Montserrat",sans-serif;font-size:10px;font-weight:700;
+  cursor:pointer;transition:all .2s;
+  background:transparent;color:var(--gray);white-space:nowrap;
+}
+.tt-btn.active{
+  background:#12152a;color:#FFDE00;
+  box-shadow:0 1px 4px rgba(0,0,0,.4);
+}
+.bm-theme-row{display:flex;gap:4px;padding:4px 6px}
+.bm-theme-btn{flex:1;justify-content:center;border-radius:12px!important;font-size:12px!important}
+.bm-theme-btn.active{background:rgba(255,222,0,.12)!important;color:var(--yellow)!important}
+
+@media(max-width:640px){.theme-toggle{display:none}}
+
+/* ── Light mode overrides ──────────────────────────────── */
+body.light{
+  --bg:#f4f5f9;--card:#ffffff;
+  --border:rgba(0,0,0,.08);
+  --yellow:#12152a;
+  --white:#12152a;
+  --gray:#6b7280;--gray2:#374151;
+  --red:#dc2626;--green:#16a34a;
+  --n1:#d1d5db;
+}
+body.light .tt-btn.active{background:#12152a;color:#ffffff}
+body.light .bm-theme-btn.active{background:rgba(18,21,42,.1)!important;color:#12152a!important}
+body.light .theme-toggle{background:rgba(0,0,0,.05);border-color:rgba(0,0,0,.1)}
+body.light ::-webkit-scrollbar-thumb{background:#d1d5db}
+body.light .month-filter{background-color:var(--card);color:var(--gray2)}
+body.light .month-filter option{background:#ffffff}
+body.light .kc::before{background:linear-gradient(90deg,#12152a,transparent)}
+body.light .rk::before{background:linear-gradient(90deg,#464a72,transparent)}
+body.light .nm-close{color:#6b7280}
+body.light .nm-close:hover{background:rgba(0,0,0,.06);color:#12152a}
+body.light .nm-cmp-row{border-bottom-color:rgba(0,0,0,.06)}
+body.light .nm-share-track{background:rgba(0,0,0,.06)}
+body.light .nm-share-fill{background:linear-gradient(90deg,#12152a,#464a72)}
+body.light .neg-modal{background:#ffffff;border-color:rgba(0,0,0,.1)}
+body.light .neg-modal-bg{background:rgba(0,0,0,.45)}
+body.light .export-btn,body.light .view-data-btn{background:rgba(0,0,0,.05);border-color:rgba(0,0,0,.1);color:#374151}
+body.light .export-btn:hover,body.light .view-data-btn:hover{background:rgba(0,0,0,.1)}
+body.light .burger-menu{background:#ffffff;border-color:rgba(0,0,0,.1)}
+body.light .bm-item{color:#374151}
+body.light .bm-item:hover{background:rgba(0,0,0,.05);color:#12152a}
+body.light .bm-separator{background:rgba(0,0,0,.08)}
+body.light .bm-select{color:#374151}
+body.light .bm-select option{background:#ffffff}
+body.light .sec{color:#6b7280}
+body.light .sec::after{background:rgba(0,0,0,.08)}
+body.light .error-card{background:rgba(220,38,38,.06);border-color:rgba(220,38,38,.2)}
+body.light .data-modal-bg{background:rgba(0,0,0,.45)}
+body.light .data-modal{background:#ffffff;border-color:rgba(0,0,0,.1)}
+body.light .data-modal th{background:#f4f5f9;color:#374151;border-color:rgba(0,0,0,.08)}
+body.light .data-modal td{border-color:rgba(0,0,0,.06);color:#12152a}
+body.light .data-modal tr:nth-child(even) td{background:rgba(0,0,0,.02)}
+body.light .pbadge{background:rgba(18,21,42,.08);border-color:rgba(18,21,42,.15);color:#12152a}
