@@ -154,6 +154,9 @@
   </div>
 </div>
 
-<script src="main.js"></script>
+<script>
+  // main.js sin caché: así nunca se mezcla código antiguo con un datos.xlsx nuevo
+  { const s = document.createElement("script"); s.src = "main.js?v=" + Date.now(); document.body.appendChild(s); }
+</script>
 </body>
 </html>

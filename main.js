@@ -535,8 +535,10 @@ function render(d, ci = -1) {
 
   renderCombo(d, isMobile());
 
-  document.getElementById("rv").textContent = d.rrss.volYTD.toLocaleString("es-ES");
-  document.getElementById("rh").textContent = d.rrss.horYTD.toLocaleString("es-ES") + " h";
+  // Sin hoja RRSS legible se muestra "—" en vez de romper todo el dashboard
+  const rrss = d.rrss || { months: [], volMon: [], horMon: [], volYTD: null, horYTD: null };
+  document.getElementById("rv").textContent = rrss.volYTD === null ? "—" : rrss.volYTD.toLocaleString("es-ES");
+  document.getElementById("rh").textContent = rrss.horYTD === null ? "—" : rrss.horYTD.toLocaleString("es-ES") + " h";
   function mb(id, vals, months) {
     const mx = Math.max(...vals);
     const mxi = vals.indexOf(mx);
@@ -546,8 +548,8 @@ function render(d, ci = -1) {
       return `<div class="mrow"><div class="mm">${m}</div><div class="mbw"><div class="mbf" style="width:${p}%;background:${cl}"></div></div><div class="mv">${vals[i]}</div></div>`;
     }).join("");
   }
-  mb("rvb", d.rrss.volMon, d.rrss.months);
-  mb("rhb", d.rrss.horMon, d.rrss.months);
+  mb("rvb", rrss.volMon, rrss.months);
+  mb("rhb", rrss.horMon, rrss.months);
 
   kill("ratioChart");
   const negCommon = negVolMerged.filter(nv => {
