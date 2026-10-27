@@ -96,7 +96,7 @@ function sliceData(d, ci) {
     entrega: {
       months: d.entrega.months.slice(0, ci + 1),
       values: evSlice,
-      mediaYTD: evSlice[ci] !== undefined ? evSlice[ci] : 0
+      mediaYTD: evSlice[ci] ?? null
     },
     rrss: d.rrss ? {
       months: d.rrss.months.slice(0, ci + 1),
@@ -466,13 +466,25 @@ function render(d, ci = -1) {
   document.getElementById("ks1").innerHTML = subYoYAbs(th, th25, " h", yoyLbl);
   setHtml("ks1y", subYoY(th, th25));
 
-  // KPI 2 — Entrega
-  const em25 = lastData2025 && lastData2025.entrega
-    ? (isSingle ? (lastData2025.entrega.values[ci] || null) : lastData2025.entrega.mediaYTD)
-    : null;
-  document.getElementById("kv2").textContent = d.entrega.mediaYTD.toFixed(1) + " d";
-  document.getElementById("ks2").innerHTML = subYoYAbs(d.entrega.mediaYTD, em25, " d", yoyLbl, true);
-  setHtml("ks2y", subYoY(d.entrega.mediaYTD, em25, true));
+  // KPI 2 — Entrega (2025 solo sobre los meses que tienen dato de entrega en 2026)
+  const em = d.entrega.mediaYTD;
+  const eIdx = isSingle ? [ci] : d.entrega.values.map((v, i) => v !== null ? i : -1).filter(i => i >= 0);
+  const ev25 = lastData2025 && lastData2025.entrega
+    ? eIdx.map(i => lastData2025.entrega.values[i]).filter(v => v !== null && v !== undefined)
+    : [];
+  const em25 = ev25.length ? ev25.reduce((a, b) => a + b, 0) / ev25.length : null;
+  const eLbl = !isSingle && eIdx.length < d.entrega.values.length && eIdx.length
+    ? period(eIdx.map(i => d.entrega.months[i])) + " 2025"
+    : yoyLbl;
+  if (em === null) {
+    document.getElementById("kv2").textContent = "—";
+    document.getElementById("ks2").textContent = "Sin datos de entrega" + (isSingle ? " en " + d.tipologia.months[lm] : "");
+    setHtml("ks2y", "");
+  } else {
+    document.getElementById("kv2").textContent = em.toFixed(1) + " d";
+    document.getElementById("ks2").innerHTML = subYoYAbs(em, em25, " d", eLbl, true);
+    setHtml("ks2y", subYoY(em, em25, true));
+  }
 
   // KPI 3 — Trabajos externalizados
   const fl = d.freelance ? d.freelance.categories.reduce((s, c) => s + c.ytd, 0) : 0;
@@ -626,89 +638,110 @@ function render(d, ci = -1) {
   });
 }
 
+// ── Lectura del Excel ───────────────────────────────
+// Acepta la plantilla ("Enero", "Total YTD", "TOTAL") y también exportaciones de
+// tabla dinámica (fechas como cabecera, "Suma total", meses desordenados o que
+// faltan). Todas las hojas se alinean a un mismo eje de meses que empieza en enero.
+const MES_NOMBRES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+function monthIndex(cell) {
+  if (cell === null || cell === undefined || cell === "") return -1;
+  if (cell instanceof Date) return cell.getMonth();
+  if (typeof cell === "number") {
+    if (cell < 20000) return -1; // no es una fecha de Excel
+    return new Date(Math.round((cell - 25569) * 86400000)).getUTCMonth();
+  }
+  const s = String(cell).trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  return MES_NOMBRES.findIndex(m => s.startsWith(m.slice(0, 3).toLowerCase()));
+}
+
+const round2 = v => Math.round(v * 100) / 100;
+const isTotalName = name => /^(total|suma total|total general)$/i.test(name);
+const isBlankName = name => !name || /^\(?(en blanco|blank)\)?$/i.test(name);
+
 function parseExcel(buf) {
   const wb = XLSX.read(buf, { type: "array" });
-
-  function parseSheet(ws) {
-    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
-    const h = rows[2];
-    if (!h) return null;
-    const yc = h.findIndex(c => c && String(c).toLowerCase().includes("total ytd"));
+  const readRows = name => wb.Sheets[name] ? XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: null }) : null;
+  const findHeader = rows => rows.findIndex(r => r && r.slice(1).some(c => monthIndex(c) >= 0));
+  const monthCols = h => {
     const mc = [];
-    for (let c = 1; c < (yc > 0 ? yc : h.length); c++) {
-      if (h[c]) mc.push({ i: c, n: String(h[c]) });
-    }
+    for (let c = 1; c < h.length; c++) { const m = monthIndex(h[c]); if (m >= 0) mc.push({ c, m }); }
+    return mc;
+  };
+
+  function parseSheet(rows) {
+    if (!rows) return null;
+    const hIdx = findHeader(rows);
+    if (hIdx < 0) return null;
+    const mc = monthCols(rows[hIdx]);
     const cats = [];
-    for (let r = 3; r < rows.length; r++) {
-      const row = rows[r];
-      const cat = row && row[0] ? String(row[0]).trim() : "";
-      if (!cat || cat.toUpperCase() === "TOTAL") break;
-      cats.push({
-        name: cat,
-        monthly: mc.map(m => Number(row[m.i]) || 0),
-        ytd: yc >= 0 ? Number(row[yc]) || 0 : mc.reduce((s, m) => s + (Number(row[m.i]) || 0), 0)
-      });
+    for (let r = hIdx + 1; r < rows.length; r++) {
+      const row = rows[r] || [];
+      const name = row[0] === null ? "" : String(row[0]).trim();
+      if (isTotalName(name)) break;
+      if (isBlankName(name)) continue;
+      const byMonth = {};
+      mc.forEach(({ c, m }) => { byMonth[m] = (byMonth[m] || 0) + (Number(row[c]) || 0); });
+      cats.push({ name, byMonth });
     }
-    return { months: mc.map(m => m.n), categories: cats };
+    return { lastMonth: Math.max(-1, ...mc.map(x => x.m)), cats };
   }
+
+  const SHEETS = { Tipologia: "tipologia", Negocio_Volumen: "negVol", Negocio_Horas: "negHoras", Ciudad: "ciudad", Freelance: "freelance" };
+  const parsed = {};
+  Object.keys(SHEETS).forEach(s => { parsed[SHEETS[s]] = parseSheet(readRows(s)); });
+  if (!parsed.tipologia) throw new Error("Estructura de Excel no reconocida. Asegúrate de que el archivo tiene la hoja 'Tipologia'.");
+
+  // Nº de meses = último mes con datos en las hojas principales
+  const n = Math.max(...["tipologia", "negVol", "negHoras", "ciudad"].map(k => parsed[k] ? parsed[k].lastMonth : -1)) + 1;
+  const months = MES_NOMBRES.slice(0, n);
 
   const d = {};
-  ["Tipologia", "Negocio_Volumen", "Negocio_Horas", "Ciudad", "Freelance"].forEach(s => {
-    if (wb.Sheets[s]) {
-      const key = { Tipologia: "tipologia", Negocio_Volumen: "negVol", Negocio_Horas: "negHoras", Ciudad: "ciudad", Freelance: "freelance" }[s];
-      d[key] = parseSheet(wb.Sheets[s]);
-    }
+  Object.values(SHEETS).forEach(k => {
+    if (!parsed[k]) return;
+    d[k] = {
+      months: [...months],
+      categories: parsed[k].cats.map(c => {
+        const monthly = months.map((_, i) => round2(c.byMonth[i] || 0));
+        return { name: c.name, monthly, ytd: round2(monthly.reduce((a, b) => a + b, 0)) };
+      })
+    };
   });
 
-  const er = wb.Sheets["Entrega"] ? XLSX.utils.sheet_to_json(wb.Sheets["Entrega"], { header: 1, defval: null }) : null;
-  if (er) {
-    const hIdx = er.findIndex(r => r && r.some(c => c && String(c).toLowerCase().includes("ene")));
-    if (hIdx >= 0) {
-      const h = er[hIdx];
-      const ms = [];
-      for (let c = 1; c < h.length; c++) {
-        if (h[c] && !String(h[c]).toLowerCase().includes("total")) ms.push(String(h[c]));
-      }
-      const dataRows = er.slice(hIdx + 1).filter(r => r && r[0] &&
-        !String(r[0]).toLowerCase().includes("total") &&
-        !String(r[0]).toLowerCase().includes("media"));
-      const vs = ms.map((_, i) => {
-        const vals = dataRows.map(r => Number(r[i + 1]) || 0).filter(v => v > 0);
-        return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
-      });
-      const mediaRow = er.find(r => r && r[0] && String(r[0]).toLowerCase().includes("media"));
-      const media = mediaRow ? (Number(mediaRow[1]) || 0) : (vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : 0);
-      d.entrega = { months: ms, values: vs, mediaYTD: media };
-    } else {
-      d.entrega = { months: [], values: [], mediaYTD: 0 };
-    }
-  } else {
-    d.entrega = { months: [], values: [], mediaYTD: 0 };
+  // Entrega: media de las filas de cada mes; null si ese mes no tiene datos
+  d.entrega = { months: [...months], values: Array(n).fill(null), mediaYTD: null };
+  const er = readRows("Entrega");
+  const eIdx = er ? findHeader(er) : -1;
+  if (eIdx >= 0) {
+    const dataRows = er.slice(eIdx + 1).filter(r => r && r[0] && !/total|media/i.test(String(r[0])));
+    monthCols(er[eIdx]).forEach(({ c, m }) => {
+      if (m >= n) return;
+      const vals = dataRows.map(r => Number(r[c]) || 0).filter(v => v > 0);
+      if (vals.length) d.entrega.values[m] = vals.reduce((a, b) => a + b, 0) / vals.length;
+    });
+  }
+  const eVals = d.entrega.values.filter(v => v !== null);
+  d.entrega.mediaYTD = eVals.length ? eVals.reduce((a, b) => a + b, 0) / eVals.length : null;
+
+  // RRSS: fila de volumen y fila de horas (por nombre, o por posición)
+  const rr = readRows("RRSS");
+  const rIdx = rr ? findHeader(rr) : -1;
+  if (rIdx >= 0) {
+    const dataRows = rr.slice(rIdx + 1).filter(r => r && r[0] && !isTotalName(String(r[0]).trim()));
+    const vRow = dataRows.find(r => /vol|publ/i.test(r[0])) || dataRows[0] || [];
+    const hRow = dataRows.find(r => /hora/i.test(r[0])) || dataRows[1] || [];
+    const vm = Array(n).fill(0), hm = Array(n).fill(0);
+    monthCols(rr[rIdx]).forEach(({ c, m }) => {
+      if (m >= n) return;
+      vm[m] += Number(vRow[c]) || 0;
+      hm[m] += Number(hRow[c]) || 0;
+    });
+    d.rrss = {
+      months: [...months], volMon: vm, horMon: hm.map(round2),
+      volYTD: vm.reduce((a, b) => a + b, 0), horYTD: round2(hm.reduce((a, b) => a + b, 0))
+    };
   }
 
-  const rr = wb.Sheets["RRSS"] ? XLSX.utils.sheet_to_json(wb.Sheets["RRSS"], { header: 1, defval: null }) : null;
-  if (rr) {
-    const hIdx = rr.findIndex(row => row && row.some(c => c && String(c).toLowerCase().includes("ene")));
-    if (hIdx >= 0) {
-      const h = rr[hIdx], v = rr[hIdx + 1], hr = rr[hIdx + 2];
-      const ms = [], vm = [], hm = [];
-      let vY = 0, hY = 0;
-      for (let c = 1; c < h.length; c++) {
-        if (!h[c]) continue;
-        if (String(h[c]).toLowerCase().includes("total")) {
-          vY = Number(v[c]) || 0;
-          hY = Number(hr ? hr[c] : 0) || 0;
-        } else {
-          ms.push(String(h[c]));
-          vm.push(Number(v[c]) || 0);
-          hm.push(Number(hr ? hr[c] : 0) || 0);
-        }
-      }
-      d.rrss = { months: ms, volMon: vm, horMon: hm, volYTD: vY || vm.reduce((a, b) => a + b, 0), horYTD: hY || hm.reduce((a, b) => a + b, 0) };
-    }
-  }
-
-  if (!d.tipologia) throw new Error("Estructura de Excel no reconocida. Asegúrate de que el archivo tiene la hoja 'Tipologia'.");
   return d;
 }
 
