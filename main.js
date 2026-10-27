@@ -20,12 +20,8 @@ const WM   = () => isLight() ? 'rgba(18,21,42,.5)'  : 'rgba(255,255,255,.5)';
 const WL   = () => isLight() ? 'rgba(18,21,42,.7)'  : 'rgba(255,255,255,.7)';
 const WP   = () => isLight() ? 'rgba(18,21,42,.8)'  : 'rgba(255,255,255,.8)';
 const WBG  = () => isLight() ? 'rgba(18,21,42,.07)' : 'rgba(255,255,255,.07)';
-const AC   = () => isLight() ? 'rgba(18,21,42,.6)'  : 'rgba(255,222,0,.6)';
 const YM   = () => isLight() ? 'rgba(18,21,42,.45)' : 'rgba(255,222,0,.45)';
-const YD   = () => isLight() ? 'rgba(18,21,42,.7)'  : 'rgba(255,222,0,.7)';
-const YA   = () => isLight() ? 'rgba(18,21,42,.9)'  : 'rgba(255,222,0,.9)';
 const YBG  = () => isLight() ? 'rgba(18,21,42,.15)' : 'rgba(255,222,0,.15)';
-const YBG2 = () => isLight() ? 'rgba(18,21,42,.08)' : 'rgba(255,222,0,.08)';
 
 function applyTheme(theme, rerender = true) {
   document.body.classList.toggle('light', theme === 'light');
@@ -558,7 +554,7 @@ function render(d, ci = -1) {
     const nh = negHorasMerged.find(nh => nh.name === nv.name);
     return { name: nv.name, ytd: nv.ytd, ratio: nv.ytd > 0 ? parseFloat((nh.ytd / nv.ytd).toFixed(1)) : 0 };
   }).sort((a, b) => b.ratio - a.ratio);
-  const ratioColors = cols(negCommon.length);
+  // Horas en azul y proyectos en amarillo, en ambos modos
   charts.ratioChart = new Chart(document.getElementById("ratioChart"), {
     type: "bar",
     data: {
@@ -566,12 +562,12 @@ function render(d, ci = -1) {
       datasets: [
         {
           type: "bar", label: "H / trabajo", data: negCommon.map(c => c.ratio),
-          backgroundColor: ratioColors, borderRadius: 4, borderSkipped: false, yAxisID: "y", order: 1
+          backgroundColor: N[3], borderRadius: 4, borderSkipped: false, yAxisID: "y", order: 1
         },
         {
           type: "line", label: "Proyectos", data: negCommon.map(c => c.ytd),
-          borderColor: YD(), backgroundColor: YBG2(),
-          pointBackgroundColor: YA(), pointBorderColor: isLight() ? "#f4f5f9" : "#12152a", pointBorderWidth: 2,
+          borderColor: Y, backgroundColor: "rgba(255,222,0,.15)",
+          pointBackgroundColor: Y, pointBorderColor: "#12152a", pointBorderWidth: 2,
           pointRadius: 5, tension: .35, fill: false, yAxisID: "y1", order: 0
         }
       ]
@@ -590,7 +586,7 @@ function render(d, ci = -1) {
       scales: {
         x: { ticks: { display: !isMobile(), color: TC(), font: { family: "Montserrat", size: 10 }, maxRotation: 35, minRotation: 25 }, grid: { display: false }, border: { display: false } },
         y: { position: "left", ticks: { color: TC2(), font: { family: "Montserrat", size: 10 } }, grid: { color: GC2() }, border: { display: false } },
-        y1: { position: "right", ticks: { color: AC(), font: { family: "Montserrat", size: 10 } }, grid: { display: false }, border: { display: false } }
+        y1: { position: "right", ticks: { color: isLight() ? "#b39b00" : "rgba(255,222,0,.6)", font: { family: "Montserrat", size: 10 } }, grid: { display: false }, border: { display: false } }
       }
     }
   });
